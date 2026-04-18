@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PhotoSourceInputs } from "@/components/capture/PhotoSourceInputs";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { createProjectPhoto } from "@/lib/db/projectPhotos";
+import { extractGpsFromImageFile } from "@/lib/geo/exifGps";
 import type { GPSReading } from "@/lib/hooks/useGeolocation";
 
 async function uploadGalleryPhotoInBackground(
@@ -51,15 +53,22 @@ export function ProjectPhotoQuickForm({
   onSaved,
 }: ProjectPhotoQuickFormProps) {
   const captionId = useId();
-  const fileId = useId();
+  const photoGroupLabelId = useId();
+  const cameraInputId = useId();
+  const galleryInputId = useId();
   const [caption, setCaption] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [exifGps, setExifGps] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [exifBusy, setExifBusy] = useState(false);
+  const [preferExif, setPreferExif] = useState(true);
   const [gpsExtra, setGpsExtra] = useState<GPSReading | null>(null);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [gpsErr, setGpsErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previewUrl = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
@@ -72,14 +81,17 @@ export function ProjectPhotoQuickForm({
     };
   }, [previewUrl]);
 
-  const onPickFile = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    setFile(f ?? null);
+  const onFileSelected = useCallback(async (f: File) => {
+    setFile(f);
     setError(null);
+    setExifBusy(true);
+    try {
+      const g = await extractGpsFromImageFile(f);
+      setExifGps(g);
+      setPreferExif(Boolean(g));
+    } finally {
+      setExifBusy(false);
+    }
   }, []);
 
   const attachGps = useCallback(async () => {
@@ -103,12 +115,14 @@ export function ProjectPhotoQuickForm({
     }
     setSubmitting(true);
     try {
+      const useExif =
+        exifGps != null && (gpsExtra == null || preferExif);
       const photoLocalId = await createProjectPhoto({
         projectLocalId,
         photoBlob: file,
         caption: caption.trim() || undefined,
-        latitude: gpsExtra?.latitude,
-        longitude: gpsExtra?.longitude,
+        latitude: useExif ? exifGps.latitude : gpsExtra?.latitude,
+        longitude: useExif ? exifGps.longitude : gpsExtra?.longitude,
       });
 
       const row = await getDb().projectPhotos.get(photoLocalId);
@@ -138,24 +152,17 @@ export function ProjectPhotoQuickForm({
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor={fileId}>Foto</Label>
-        <input
-          ref={fileInputRef}
-          id={fileId}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          onChange={onFileChange}
+        <p id={photoGroupLabelId} className="text-sm leading-none font-medium">
+          Foto
+        </p>
+        <PhotoSourceInputs
+          cameraInputId={cameraInputId}
+          galleryInputId={galleryInputId}
+          labelledBy={photoGroupLabelId}
+          hasFile={Boolean(file)}
+          disabled={submitting}
+          onFileSelected={(f) => void onFileSelected(f)}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={onPickFile}
-        >
-          {file ? "Cambiar foto" : "Tomar o elegir foto"}
-        </Button>
         {previewUrl ? (
           <div className="border-border aspect-video max-h-48 w-full overflow-hidden rounded-md border">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -165,6 +172,17 @@ export function ProjectPhotoQuickForm({
               className="size-full object-cover"
             />
           </div>
+        ) : null}
+        {file && exifBusy ? (
+          <p className="text-muted-foreground text-xs">
+            Leyendo ubicación en la foto…
+          </p>
+        ) : null}
+        {file && !exifBusy && !exifGps ? (
+          <p className="text-muted-foreground text-xs">
+            Esta imagen no incluye coordenadas GPS en EXIF. Puedes añadir GPS
+            actual abajo.
+          </p>
         ) : null}
       </div>
 
@@ -181,13 +199,53 @@ export function ProjectPhotoQuickForm({
 
       <div className="border-border space-y-2 rounded-lg border p-3">
         <p className="text-muted-foreground text-xs">Ubicación (opcional)</p>
+        {exifGps ? (
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-[11px] uppercase tracking-wide">
+              EXIF (foto)
+            </p>
+            <p className="font-mono text-xs">
+              {exifGps.latitude.toFixed(6)}, {exifGps.longitude.toFixed(6)}
+            </p>
+          </div>
+        ) : null}
         {gpsExtra ? (
-          <p className="font-mono text-xs">
-            {gpsExtra.latitude.toFixed(6)}, {gpsExtra.longitude.toFixed(6)}{" "}
-            <span className="text-muted-foreground">
-              ±{gpsExtra.accuracy.toFixed(0)} m
-            </span>
-          </p>
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-[11px] uppercase tracking-wide">
+              GPS de ahora
+            </p>
+            <p className="font-mono text-xs">
+              {gpsExtra.latitude.toFixed(6)}, {gpsExtra.longitude.toFixed(6)}{" "}
+              <span className="text-muted-foreground">
+                ±{gpsExtra.accuracy.toFixed(0)} m
+              </span>
+            </p>
+          </div>
+        ) : null}
+        {exifGps && gpsExtra ? (
+          <fieldset className="space-y-1.5 text-xs">
+            <legend className="sr-only">Prioridad de ubicación al guardar</legend>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="gallery-coord-src"
+                className="accent-primary"
+                checked={preferExif}
+                onChange={() => setPreferExif(true)}
+              />
+              Guardar con EXIF de la foto
+            </label>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="gallery-coord-src"
+                className="accent-primary"
+                checked={!preferExif}
+                onChange={() => setPreferExif(false)}
+              />
+              Guardar con GPS de ahora
+            </label>
+          </fieldset>
         ) : null}
         {gpsErr ? (
           <p className="text-destructive text-xs" role="alert">

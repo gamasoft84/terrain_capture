@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,8 @@ import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import { createVertex, nextOrderIndexForPolygon } from "@/lib/db/vertices";
+import { extractGpsFromImageFile } from "@/lib/geo/exifGps";
+import { PhotoSourceInputs } from "@/components/capture/PhotoSourceInputs";
 import {
   accuracyLevelFromMeters,
   type GPSReading,
@@ -78,12 +80,19 @@ export function VertexForm({
   onSaved,
 }: VertexFormProps) {
   const noteId = useId();
-  const fileId = useId();
+  const photoGroupLabelId = useId();
+  const cameraInputId = useId();
+  const galleryInputId = useId();
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [exifGps, setExifGps] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [exifBusy, setExifBusy] = useState(false);
+  const [preferExif, setPreferExif] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previewUrl = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
@@ -96,14 +105,17 @@ export function VertexForm({
     };
   }, [previewUrl]);
 
-  const onPickFile = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    setFile(f ?? null);
+  const onFileSelected = useCallback(async (f: File) => {
+    setFile(f);
     setError(null);
+    setExifBusy(true);
+    try {
+      const g = await extractGpsFromImageFile(f);
+      setExifGps(g);
+      setPreferExif(Boolean(g));
+    } finally {
+      setExifBusy(false);
+    }
   }, []);
 
   const level = accuracyLevelFromMeters(gpsReading.accuracy);
@@ -116,15 +128,16 @@ export function VertexForm({
     }
     setSubmitting(true);
     try {
+      const useExif = Boolean(exifGps && preferExif);
       const orderIndex = await nextOrderIndexForPolygon(polygonLocalId);
       const vertexLocalId = await createVertex({
         polygonLocalId,
         orderIndex,
-        latitude: gpsReading.latitude,
-        longitude: gpsReading.longitude,
-        gpsAccuracyM: gpsReading.accuracy,
-        altitudeM: gpsReading.altitude ?? undefined,
-        captureMethod,
+        latitude: useExif ? exifGps!.latitude : gpsReading.latitude,
+        longitude: useExif ? exifGps!.longitude : gpsReading.longitude,
+        gpsAccuracyM: useExif ? undefined : gpsReading.accuracy,
+        altitudeM: useExif ? undefined : (gpsReading.altitude ?? undefined),
+        captureMethod: useExif ? "photo_exif" : captureMethod,
         photoBlob: file,
         note: note.trim() || undefined,
       });
@@ -185,24 +198,17 @@ export function VertexForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={fileId}>Foto del vértice</Label>
-        <input
-          ref={fileInputRef}
-          id={fileId}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          onChange={onFileChange}
+        <p id={photoGroupLabelId} className="text-sm leading-none font-medium">
+          Foto del vértice
+        </p>
+        <PhotoSourceInputs
+          cameraInputId={cameraInputId}
+          galleryInputId={galleryInputId}
+          labelledBy={photoGroupLabelId}
+          hasFile={Boolean(file)}
+          disabled={submitting}
+          onFileSelected={(f) => void onFileSelected(f)}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={onPickFile}
-        >
-          {file ? "Cambiar foto" : "Tomar o elegir foto"}
-        </Button>
         {previewUrl ? (
           <div className="border-border aspect-video max-h-48 w-full overflow-hidden rounded-md border">
             {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL local */}
@@ -212,6 +218,52 @@ export function VertexForm({
               className="size-full object-cover"
             />
           </div>
+        ) : null}
+        {file && exifBusy ? (
+          <p className="text-muted-foreground text-xs">
+            Leyendo ubicación en la foto…
+          </p>
+        ) : null}
+        {file && !exifBusy && exifGps ? (
+          <div className="border-border space-y-2 rounded-md border p-3 text-xs">
+            <p className="text-muted-foreground">Ubicación en el archivo (EXIF)</p>
+            <p className="font-mono text-sm">
+              <span className="text-muted-foreground">Lat </span>
+              {exifGps.latitude.toFixed(6)}
+              <br />
+              <span className="text-muted-foreground">Lng </span>
+              {exifGps.longitude.toFixed(6)}
+            </p>
+            <fieldset className="space-y-1.5">
+              <legend className="sr-only">Fuente de coordenadas al guardar</legend>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="vertex-coord-src"
+                  className="accent-primary"
+                  checked={preferExif}
+                  onChange={() => setPreferExif(true)}
+                />
+                Guardar con ubicación EXIF
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="vertex-coord-src"
+                  className="accent-primary"
+                  checked={!preferExif}
+                  onChange={() => setPreferExif(false)}
+                />
+                Guardar con GPS en vivo (arriba)
+              </label>
+            </fieldset>
+          </div>
+        ) : null}
+        {file && !exifBusy && !exifGps ? (
+          <p className="text-muted-foreground text-xs">
+            Esta imagen no incluye coordenadas GPS en EXIF; se usará el GPS en
+            vivo.
+          </p>
         ) : null}
       </div>
 
