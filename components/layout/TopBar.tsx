@@ -31,13 +31,13 @@ function accuracyColor(
 }
 
 export function TopBar() {
-  const [online, setOnline] = useState(() =>
-    typeof navigator !== "undefined" ? navigator.onLine : true,
-  );
+  // SSR and the first client paint must match; sync real status after mount.
+  const [online, setOnline] = useState(true);
   const [accuracyM, setAccuracyM] = useState<number | null>(null);
   const [batteryPct, setBatteryPct] = useState<number | null>(null);
 
   useEffect(() => {
+    setOnline(navigator.onLine);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
     window.addEventListener("online", on);
