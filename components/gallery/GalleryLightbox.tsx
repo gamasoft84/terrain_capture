@@ -5,10 +5,7 @@ import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function touchDistance(
-  a: React.Touch | Touch,
-  b: React.Touch | Touch,
-): number {
+function touchDistance(a: Touch, b: Touch): number {
   const dx = a.clientX - b.clientX;
   const dy = a.clientY - b.clientY;
   return Math.hypot(dx, dy);
@@ -45,6 +42,7 @@ export function GalleryLightbox({
     origTx: number;
     origTy: number;
   } | null>(null);
+  const gestureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scaleRef.current = scale;
@@ -76,8 +74,12 @@ export function GalleryLightbox({
 
   const clampScale = useCallback((s: number) => Math.min(MAX, Math.max(MIN, s)), []);
 
-  const onTouchStart = useCallback(
-    (e: React.TouchEvent) => {
+  useEffect(() => {
+    if (!open) return;
+    const el = gestureRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
         const d = touchDistance(e.touches[0], e.touches[1]);
         pinchAnchor.current = { d0: d, s0: scaleRef.current };
@@ -92,33 +94,62 @@ export function GalleryLightbox({
         };
         pinchAnchor.current = null;
       }
-    },
-    [],
-  );
+    };
 
-  const onTouchMove = useCallback(
-    (e: React.TouchEvent) => {
+    const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 2 && pinchAnchor.current) {
         e.preventDefault();
         const d = touchDistance(e.touches[0], e.touches[1]);
         const { d0, s0 } = pinchAnchor.current;
         const next = clampScale(s0 * (d / d0));
         setScale(next);
-      } else if (e.touches.length === 1 && panRef.current && scaleRef.current > 1) {
+      } else if (
+        e.touches.length === 1 &&
+        panRef.current &&
+        scaleRef.current > 1
+      ) {
         e.preventDefault();
         const t = e.touches[0];
         const p = panRef.current;
         setTx(p.origTx + (t.clientX - p.startX));
         setTy(p.origTy + (t.clientY - p.startY));
       }
-    },
-    [clampScale],
-  );
+    };
 
-  const onTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length < 2) pinchAnchor.current = null;
-    if (e.touches.length === 0) panRef.current = null;
-  }, []);
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinchAnchor.current = null;
+      if (e.touches.length === 0) panRef.current = null;
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const zoomIn = e.deltaY < 0;
+      const factor = zoomIn ? 1.08 : 1 / 1.08;
+      setScale((s) => {
+        const n = clampScale(s * factor);
+        if (n <= 1) {
+          setTx(0);
+          setTy(0);
+        }
+        return n;
+      });
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [open, imageSrc, clampScale]);
 
   const zoomIn = useCallback(() => {
     setScale((s) => clampScale(s * 1.25));
@@ -163,7 +194,9 @@ export function GalleryLightbox({
             type="button"
             size="icon-sm"
             variant="secondary"
-            className="size-9 border-0 bg-white/15 text-white hover:bg-white/25"
+            className={cn(
+              "size-9 border-0 bg-white/15 text-white hover:bg-white/25",
+            )}
             aria-label="Acercar"
             onClick={zoomIn}
           >
@@ -173,7 +206,9 @@ export function GalleryLightbox({
             type="button"
             size="icon-sm"
             variant="secondary"
-            className="size-9 border-0 bg-white/15 text-white hover:bg-white/25"
+            className={cn(
+              "size-9 border-0 bg-white/15 text-white hover:bg-white/25",
+            )}
             aria-label="Cerrar"
             onClick={onClose}
           >
@@ -183,12 +218,9 @@ export function GalleryLightbox({
       </div>
 
       <div
+        ref={gestureRef}
         className="relative min-h-0 flex-1 overflow-hidden"
         style={{ touchAction: "none" }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
       >
         <div
           className="flex size-full items-center justify-center overflow-hidden"
@@ -219,11 +251,12 @@ export function GalleryLightbox({
 
       <div className="border-t border-white/10 px-3 py-2 text-[11px] leading-snug text-white/80">
         <p className="mb-1 text-white/60">
-          Pellizca con dos dedos para zoom; un dedo arrastra si está ampliado.
-          También +/− y doble toque.
+          Móvil: pellizca para zoom; un dedo arrastra si está ampliado. Escritorio:
+          pellizco en trackpad (Ctrl/⌘ + rueda) o botones +/−. Doble clic alterna
+          1× / 2×.
         </p>
-        {metaLines.map((line) => (
-          <p key={line}>{line}</p>
+        {metaLines.map((line, i) => (
+          <p key={i}>{line}</p>
         ))}
       </div>
     </div>
