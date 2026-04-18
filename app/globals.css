@@ -1,7 +1,6 @@
-/* Rutas relativas: evitan resolver `tailwindcss` desde la carpeta del workspace padre (p. ej. cursor_proys). */
-@import "../node_modules/tailwindcss/index.css";
-@import "../node_modules/tw-animate-css/dist/tw-animate.css";
-@import "../node_modules/shadcn/dist/tailwind.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
