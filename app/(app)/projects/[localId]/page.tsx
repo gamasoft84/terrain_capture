@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useCallback, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -15,11 +16,28 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { CaptureButton } from "@/components/capture/CaptureButton";
 import MapCanvas from "@/components/map/MapCanvas";
+import { ProjectBottomPanel } from "@/components/project/ProjectBottomPanel";
+import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
+import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
+import { updatePolygon } from "@/lib/db/polygons";
+import {
+  deleteVertex,
+  updateVertex,
+} from "@/lib/db/vertices";
 import { getDb } from "@/lib/db/schema";
+import type { LocalVertex } from "@/lib/db/schema";
 
 export default function ProjectDetailPage() {
   const params = useParams();
   const localId = typeof params.localId === "string" ? params.localId : "";
+
+  const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
+  const [vertexSheetOpen, setVertexSheetOpen] = useState(false);
+  const [selectedVertex, setSelectedVertex] = useState<LocalVertex | null>(
+    null,
+  );
+  const [selectedDisplayIndex, setSelectedDisplayIndex] = useState(1);
+  const [closePolygonBusy, setClosePolygonBusy] = useState(false);
 
   const data = useLiveQuery(async () => {
     if (typeof window === "undefined" || !localId) return undefined;
@@ -39,6 +57,48 @@ export default function ProjectDetailPage() {
         : [];
     return { project, main, vertices };
   }, [localId]);
+
+  const handleClosePolygon = useCallback(async () => {
+    if (!data?.main || data.vertices.length < 3) return;
+    const polygonId = data.main.localId;
+    setClosePolygonBusy(true);
+    try {
+      await updatePolygon(polygonId, { isClosed: true });
+      await refreshPolygonMetricsFromVertices(polygonId, true);
+    } finally {
+      setClosePolygonBusy(false);
+    }
+  }, [data]);
+
+  const handleDeleteVertex = useCallback(
+    async (vertexLocalId: string) => {
+      if (!data?.main) return;
+      await deleteVertex(vertexLocalId);
+      await refreshPolygonMetricsFromVertices(
+        data.main.localId,
+        data.main.isClosed,
+      );
+    },
+    [data],
+  );
+
+  const handleSaveNote = useCallback(
+    async (vertexLocalId: string, note: string | undefined) => {
+      await updateVertex(vertexLocalId, { note });
+    },
+    [],
+  );
+
+  const openVertexDetail = useCallback((v: LocalVertex, displayIndex: number) => {
+    setSelectedVertex(v);
+    setSelectedDisplayIndex(displayIndex);
+    setVertexSheetOpen(true);
+  }, []);
+
+  const onVertexSheetOpenChange = useCallback((open: boolean) => {
+    setVertexSheetOpen(open);
+    if (!open) setSelectedVertex(null);
+  }, []);
 
   if (data === undefined) {
     return (
@@ -70,65 +130,88 @@ export default function ProjectDetailPage() {
     );
   }
 
-  return (
-    <div className="relative flex flex-1 flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-            {data.project.name}
-          </h1>
-          {data.project.locationLabel ? (
-            <p className="text-muted-foreground text-sm">
-              {data.project.locationLabel}
-            </p>
-          ) : null}
-        </div>
-        <Link
-          href="/"
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
-          Lista de proyectos
-        </Link>
-      </div>
-
-      <Card className="overflow-hidden">
+  if (!data.main) {
+    return (
+      <Card>
         <CardHeader>
-          <CardTitle>Mapa</CardTitle>
+          <CardTitle>{data.project.name}</CardTitle>
           <CardDescription>
-            ESRI World Imagery (MapLibre). Estadísticas y captura a pantalla
-            completa: tarea 1.10+.
+            No hay polígono principal en Dexie para este proyecto.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-muted-foreground space-y-3 text-sm">
-          <p>
-            Polígono principal:{" "}
-            <span className="text-foreground font-mono">
-              {data.main?.name ?? "—"} ({data.main?.localId ?? "—"})
-            </span>
-          </p>
-          <p>
-            Estado polígono:{" "}
-            {data.main?.isClosed ? "Cerrado" : "Abierto (sin cerrar)"} ·{" "}
-            {data.vertices.length} vértice
-            {data.vertices.length === 1 ? "" : "s"}
-          </p>
-          <MapCanvas
-            className="min-h-[min(55vh,520px)]"
-            vertices={data.vertices}
-            isClosed={data.main?.isClosed ?? false}
-            areaM2={data.main?.areaM2 ?? null}
-            showUserLocation
-          />
+        <CardContent>
+          <Link
+            href="/"
+            className={cn(buttonVariants({ variant: "outline" }), "inline-flex")}
+          >
+            Volver al inicio
+          </Link>
         </CardContent>
       </Card>
+    );
+  }
 
-      {data.main ? (
-        <CaptureButton
-          polygonLocalId={data.main.localId}
-          projectLocalId={data.project.localId}
-          polygonIsClosed={data.main.isClosed}
+  return (
+    <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col">
+      <div className="fixed inset-x-0 top-14 bottom-16 z-10">
+        <MapCanvas
+          className="h-full w-full min-h-0"
+          vertices={data.vertices}
+          isClosed={data.main.isClosed}
+          areaM2={data.main.areaM2 ?? null}
+          showUserLocation
         />
-      ) : null}
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
+          <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
+            <h1 className="text-foreground truncate text-base font-semibold tracking-tight">
+              {data.project.name}
+            </h1>
+            {data.project.locationLabel ? (
+              <p className="text-muted-foreground truncate text-xs">
+                {data.project.locationLabel}
+              </p>
+            ) : null}
+          </div>
+          <Link
+            href="/"
+            className={cn(
+              buttonVariants({ variant: "secondary", size: "sm" }),
+              "pointer-events-auto shrink-0 shadow-md",
+            )}
+          >
+            Lista
+          </Link>
+        </div>
+      </div>
+
+      <CaptureButton
+        polygonLocalId={data.main.localId}
+        projectLocalId={data.project.localId}
+        polygonIsClosed={data.main.isClosed}
+        disabled={false}
+        showFab={false}
+        captureSheetOpen={captureSheetOpen}
+        onCaptureSheetOpenChange={setCaptureSheetOpen}
+      />
+
+      <ProjectBottomPanel
+        vertices={data.vertices}
+        main={data.main}
+        onCaptureClick={() => setCaptureSheetOpen(true)}
+        onClosePolygon={() => void handleClosePolygon()}
+        onVertexClick={openVertexDetail}
+        closePolygonBusy={closePolygonBusy}
+      />
+
+      <VertexDetailSheet
+        key={selectedVertex?.localId ?? "closed"}
+        vertex={selectedVertex}
+        displayIndex={selectedDisplayIndex}
+        open={vertexSheetOpen}
+        onOpenChange={onVertexSheetOpenChange}
+        onDelete={handleDeleteVertex}
+        onSaveNote={handleSaveNote}
+      />
     </div>
   );
 }

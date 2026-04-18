@@ -1,7 +1,7 @@
 "use client";
 
 import { Camera } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -24,6 +24,11 @@ export interface CaptureButtonProps {
   polygonIsClosed: boolean;
   disabled?: boolean;
   className?: string;
+  /** Sheet controlado desde el padre (p. ej. botón en panel 1.10). */
+  captureSheetOpen?: boolean;
+  onCaptureSheetOpenChange?: (open: boolean) => void;
+  /** Si false, no se muestra el FAB (solo el sheet con control externo). @default true */
+  showFab?: boolean;
 }
 
 function geoErrorMessage(err: GeolocationPositionError): string {
@@ -47,8 +52,25 @@ export function CaptureButton({
   polygonIsClosed,
   disabled,
   className,
+  captureSheetOpen: captureSheetOpenProp,
+  onCaptureSheetOpenChange,
+  showFab = true,
 }: CaptureButtonProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const controlled =
+    captureSheetOpenProp !== undefined &&
+    onCaptureSheetOpenChange !== undefined;
+  const open = controlled ? captureSheetOpenProp : internalOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (controlled) {
+        onCaptureSheetOpenChange(next);
+      } else {
+        setInternalOpen(next);
+      }
+    },
+    [controlled, onCaptureSheetOpenChange],
+  );
   const [phase, setPhase] = useState<Phase>("menu");
   const [geoError, setGeoError] = useState<string | null>(null);
   const [captureMethod, setCaptureMethod] = useState<
@@ -82,12 +104,20 @@ export function CaptureButton({
     averaged.cancelAveraging();
   }, [averaged]);
 
+  const prevOpenRef = useRef(false);
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      resetFlow();
+    }
+    prevOpenRef.current = open;
+  }, [open, resetFlow]);
+
   const handleOpenChange = useCallback(
     (next: boolean) => {
       setOpen(next);
       if (!next) resetFlow();
     },
-    [resetFlow],
+    [resetFlow, setOpen],
   );
 
   const startQuick = useCallback(() => {
@@ -140,22 +170,21 @@ export function CaptureButton({
 
   return (
     <>
-      <Button
-        type="button"
-        size="icon-lg"
-        disabled={disabled}
-        className={cn(
-          "border-background fixed bottom-24 left-1/2 z-[35] size-16 -translate-x-1/2 rounded-full border-2 shadow-xl md:bottom-28",
-          className,
-        )}
-        aria-label="Capturar vértice"
-        onClick={() => {
-          resetFlow();
-          setOpen(true);
-        }}
-      >
-        <Camera className="size-8" />
-      </Button>
+      {showFab ? (
+        <Button
+          type="button"
+          size="icon-lg"
+          disabled={disabled}
+          className={cn(
+            "border-background fixed bottom-24 left-1/2 z-[35] size-16 -translate-x-1/2 rounded-full border-2 shadow-xl md:bottom-28",
+            className,
+          )}
+          aria-label="Capturar vértice"
+          onClick={() => setOpen(true)}
+        >
+          <Camera className="size-8" />
+        </Button>
+      ) : null}
 
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent

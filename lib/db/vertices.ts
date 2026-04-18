@@ -37,6 +37,15 @@ export async function deleteVertex(localId: string): Promise<void> {
   await getDb().vertices.delete(localId);
 }
 
+export async function updateVertex(
+  localId: string,
+  patch: Partial<
+    Pick<LocalVertex, "note" | "photoBlob" | "photoUrl" | "gpsAccuracyM">
+  >,
+): Promise<void> {
+  await getDb().vertices.update(localId, patch);
+}
+
 export async function nextOrderIndexForPolygon(
   polygonLocalId: string,
 ): Promise<number> {
