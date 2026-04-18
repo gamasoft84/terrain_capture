@@ -39,7 +39,11 @@ export interface LocalVertex {
   gpsAccuracyM?: number;
   altitudeM?: number;
   capturedAt: Date;
+  /** Legado: algunas filas solo tienen esto. Preferir `photoBytes` + `photoMime` en WebKit. */
   photoBlob?: Blob;
+  /** Foto en crudo (IndexedDB suele llevarlo mejor que `Blob` en Safari). */
+  photoBytes?: ArrayBuffer;
+  photoMime?: string;
   photoUrl?: string;
   note?: string;
   captureMethod:
@@ -70,6 +74,8 @@ export interface LocalProjectPhoto {
   serverId?: string;
   projectLocalId: string;
   photoBlob?: Blob;
+  photoBytes?: ArrayBuffer;
+  photoMime?: string;
   photoUrl?: string;
   thumbnailUrl?: string;
   caption?: string;

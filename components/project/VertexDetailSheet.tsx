@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { blobFromStored } from "@/lib/db/blobFromStored";
 import type { LocalVertex } from "@/lib/db/schema";
 
 export interface VertexDetailSheetProps {
@@ -35,11 +36,12 @@ export function VertexDetailSheet({
   const [note, setNote] = useState(() => vertex?.note ?? "");
   const [busy, setBusy] = useState<"delete" | "save" | null>(null);
 
-  const photoBlob = vertex?.photoBlob;
   const blobPreview = useMemo(() => {
-    if (!photoBlob) return null;
-    return URL.createObjectURL(photoBlob);
-  }, [photoBlob]);
+    if (!vertex) return null;
+    const b = blobFromStored(vertex);
+    if (!b) return null;
+    return URL.createObjectURL(b);
+  }, [vertex]);
 
   useEffect(() => {
     return () => {
