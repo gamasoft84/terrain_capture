@@ -13,6 +13,7 @@ import * as turf from "@turf/turf";
 import { cn } from "@/lib/utils";
 import type { LocalPOI, LocalPolygon, LocalVertex } from "@/lib/db/schema";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
+import { updatePOI } from "@/lib/db/pois";
 import { updateVertex } from "@/lib/db/vertices";
 import { calculateCentroid, formatAreaDisplay } from "@/lib/geo/calculations";
 
@@ -200,19 +201,20 @@ function createAreaLabelEl(text: string): HTMLDivElement {
   return el;
 }
 
-function createPoiMarkerEl(label: string, selected: boolean): HTMLDivElement {
+function createPoiMarkerEl(
+  label: string,
+  selected: boolean,
+  draggable: boolean,
+): HTMLDivElement {
   const wrap = document.createElement("div");
-  wrap.style.display = "flex";
-  wrap.style.flexDirection = "column";
-  wrap.style.alignItems = "center";
-  wrap.style.cursor = "pointer";
-  wrap.style.pointerEvents = "auto";
-  wrap.style.gap = "2px";
-  if (selected) {
-    wrap.style.outline = "2px solid #fbbf24";
-    wrap.style.outlineOffset = "2px";
-    wrap.style.borderRadius = "8px";
-  }
+  wrap.className = cn(
+    "flex flex-col items-center gap-0.5 pointer-events-auto",
+    selected &&
+      "rounded-lg outline outline-2 outline-offset-2 outline-amber-400",
+    draggable
+      ? "cursor-grab touch-none ring-2 ring-amber-500/80 rounded-lg active:cursor-grabbing"
+      : "cursor-pointer",
+  );
   const iconWrap = document.createElement("div");
   iconWrap.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.35))";
   iconWrap.innerHTML =
@@ -283,6 +285,8 @@ export default function MapCanvasInner({
     showUserLocation,
   });
   const prevAllowVertexDragRef = useRef(allowVertexDrag);
+  /** Tras `dragend` en un POI, MapLibre puede disparar `click`: no abrir el sheet. */
+  const poiSkipNextOpenRef = useRef(false);
 
   const syncMap = useCallback((map: maplibregl.Map) => {
     const {
@@ -388,18 +392,49 @@ export default function MapCanvasInner({
 
     for (const m of poiMarkersRef.current) m.remove();
     poiMarkersRef.current = [];
+    const poiDragEnabled = Boolean(dragPref);
     for (const poi of poiList) {
       const el = createPoiMarkerEl(
         poi.label,
         Boolean(selectedPoiId && poi.localId === selectedPoiId),
+        poiDragEnabled,
       );
+      if (poiDragEnabled) {
+        el.title =
+          "Arrastra para reubicar el POI. Toque para abrir el detalle.";
+      }
       el.addEventListener("click", (ev) => {
         ev.stopPropagation();
+        if (poiSkipNextOpenRef.current) {
+          poiSkipNextOpenRef.current = false;
+          return;
+        }
         onPoiClickRef.current?.(poi);
       });
-      const marker = new maplibregl.Marker({ element: el })
+      const marker = new maplibregl.Marker({
+        element: el,
+        draggable: poiDragEnabled,
+      })
         .setLngLat([poi.longitude, poi.latitude])
         .addTo(map);
+
+      if (poiDragEnabled) {
+        marker.on("dragend", () => {
+          poiSkipNextOpenRef.current = true;
+          const ll = marker.getLngLat();
+          void (async () => {
+            try {
+              await updatePOI(poi.localId, {
+                latitude: ll.lat,
+                longitude: ll.lng,
+              });
+            } catch {
+              marker.setLngLat([poi.longitude, poi.latitude]);
+            }
+          })();
+        });
+      }
+
       poiMarkersRef.current.push(marker);
     }
 

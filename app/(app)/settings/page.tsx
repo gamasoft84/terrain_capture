@@ -29,13 +29,14 @@ export default function SettingsPage() {
                 htmlFor="vertex-map-drag"
                 className="text-base font-medium"
               >
-                Mover vértices en el mapa
+                Mover vértices y POIs en el mapa
               </Label>
               <p className="text-muted-foreground text-sm leading-snug">
-                Solo para pruebas: en la vista de proyecto podrás arrastrar P1,
-                P2… y guardar posición en Dexie (método{" "}
-                <span className="font-mono text-xs">manual_map</span>). Por
-                defecto desactivado para no correr vértices por error en campo.
+                Solo para pruebas: en la vista de proyecto podrás arrastrar
+                vértices (P1, P2…) y marcadores de POI; la posición se guarda en
+                Dexie. Los vértices usan método{" "}
+                <span className="font-mono text-xs">manual_map</span>. Por
+                defecto desactivado para no mover puntos por error en campo.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -48,7 +49,7 @@ export default function SettingsPage() {
               />
               <span className="text-sm">
                 {allowVertexMapDrag
-                  ? "Activado: marcadores con anillo ámbar y arrastre."
+                  ? "Activado: vértices y POIs con anillo ámbar y arrastre."
                   : "Desactivado"}
               </span>
             </div>
