@@ -11,7 +11,7 @@ import type {
 } from "geojson";
 import * as turf from "@turf/turf";
 import { cn } from "@/lib/utils";
-import type { LocalPolygon, LocalVertex } from "@/lib/db/schema";
+import type { LocalPOI, LocalPolygon, LocalVertex } from "@/lib/db/schema";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import { updateVertex } from "@/lib/db/vertices";
 import { calculateCentroid, formatAreaDisplay } from "@/lib/geo/calculations";
@@ -45,6 +45,11 @@ export interface MapCanvasProps {
   selectedSubPolygonLocalId?: string | null;
   /** Click en el mapa: sub-polígono cerrado bajo el punto (el de menor área si hay varios). */
   onSelectSubPolygonFromMap?: (polygonLocalId: string | null) => void;
+  /** POIs del proyecto (marcador MapPin + etiqueta). */
+  pois?: LocalPOI[];
+  /** Resalta el marcador del POI seleccionado (p. ej. sheet abierto). */
+  selectedPoiLocalId?: string | null;
+  onPoiMarkerClick?: (poi: LocalPOI) => void;
   onMapClick?: (lngLat: { lng: number; lat: number }) => void;
   showUserLocation?: boolean;
   initialCenter?: [number, number];
@@ -195,6 +200,43 @@ function createAreaLabelEl(text: string): HTMLDivElement {
   return el;
 }
 
+function createPoiMarkerEl(label: string, selected: boolean): HTMLDivElement {
+  const wrap = document.createElement("div");
+  wrap.style.display = "flex";
+  wrap.style.flexDirection = "column";
+  wrap.style.alignItems = "center";
+  wrap.style.cursor = "pointer";
+  wrap.style.pointerEvents = "auto";
+  wrap.style.gap = "2px";
+  if (selected) {
+    wrap.style.outline = "2px solid #fbbf24";
+    wrap.style.outlineOffset = "2px";
+    wrap.style.borderRadius = "8px";
+  }
+  const iconWrap = document.createElement("div");
+  iconWrap.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.35))";
+  iconWrap.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5" fill="#fffbeb" stroke="#d97706"/></svg>';
+  const text = document.createElement("div");
+  text.style.maxWidth = "5.5rem";
+  text.style.overflow = "hidden";
+  text.style.textOverflow = "ellipsis";
+  text.style.whiteSpace = "nowrap";
+  text.style.fontSize = "10px";
+  text.style.fontWeight = "600";
+  text.style.lineHeight = "1.2";
+  text.style.padding = "2px 6px";
+  text.style.borderRadius = "4px";
+  text.style.background = "rgba(255,255,255,0.92)";
+  text.style.color = "#171717";
+  text.style.border = "1px solid rgba(217,119,6,0.45)";
+  text.style.boxShadow = "0 1px 2px rgba(0,0,0,0.15)";
+  text.textContent = label;
+  wrap.appendChild(iconWrap);
+  wrap.appendChild(text);
+  return wrap;
+}
+
 export default function MapCanvasInner({
   vertices,
   isClosed,
@@ -202,6 +244,9 @@ export default function MapCanvasInner({
   subLayers = [],
   selectedSubPolygonLocalId = null,
   onSelectSubPolygonFromMap,
+  pois = [],
+  selectedPoiLocalId = null,
+  onPoiMarkerClick,
   onMapClick,
   showUserLocation = true,
   initialCenter = DEFAULT_CENTER,
@@ -213,18 +258,22 @@ export default function MapCanvasInner({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const poiMarkersRef = useRef<maplibregl.Marker[]>([]);
   const areaMarkerRef = useRef<maplibregl.Marker | null>(null);
   const styleReadyRef = useRef(false);
   const vertexCountForFitRef = useRef(-1);
   const didFitForCurrentVertexSetRef = useRef(false);
   const onClickRef = useRef(onMapClick);
   const onSubPickRef = useRef(onSelectSubPolygonFromMap);
+  const onPoiClickRef = useRef(onPoiMarkerClick);
   const dataRef = useRef({
     vertices,
     isClosed,
     areaM2,
     subLayers,
     selectedSubPolygonLocalId,
+    pois,
+    selectedPoiLocalId,
     allowVertexDrag,
     resolveVertexDragTarget,
   });
@@ -242,6 +291,8 @@ export default function MapCanvasInner({
       areaM2: area,
       subLayers: subs,
       selectedSubPolygonLocalId: selectedSubId,
+      pois: poiList,
+      selectedPoiLocalId: selectedPoiId,
       allowVertexDrag: dragPref,
       resolveVertexDragTarget: resolveDrag,
     } = dataRef.current;
@@ -335,6 +386,23 @@ export default function MapCanvasInner({
       markersRef.current.push(marker);
     });
 
+    for (const m of poiMarkersRef.current) m.remove();
+    poiMarkersRef.current = [];
+    for (const poi of poiList) {
+      const el = createPoiMarkerEl(
+        poi.label,
+        Boolean(selectedPoiId && poi.localId === selectedPoiId),
+      );
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        onPoiClickRef.current?.(poi);
+      });
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([poi.longitude, poi.latitude])
+        .addTo(map);
+      poiMarkersRef.current.push(marker);
+    }
+
     areaMarkerRef.current?.remove();
     areaMarkerRef.current = null;
 
@@ -358,6 +426,9 @@ export default function MapCanvasInner({
         allCoords.push([x.longitude, x.latitude]);
       }
     }
+    for (const p of poiList) {
+      allCoords.push([p.longitude, p.latitude]);
+    }
 
     if (allCoords.length === 0) {
       vertexCountForFitRef.current = -1;
@@ -376,7 +447,7 @@ export default function MapCanvasInner({
       return;
     }
 
-    const markerCount = markerEntries.length;
+    const markerCount = markerEntries.length + poiList.length;
     if (markerCount !== vertexCountForFitRef.current) {
       vertexCountForFitRef.current = markerCount;
       didFitForCurrentVertexSetRef.current = false;
@@ -390,12 +461,15 @@ export default function MapCanvasInner({
   useLayoutEffect(() => {
     onClickRef.current = onMapClick;
     onSubPickRef.current = onSelectSubPolygonFromMap;
+    onPoiClickRef.current = onPoiMarkerClick;
     dataRef.current = {
       vertices,
       isClosed,
       areaM2,
       subLayers,
       selectedSubPolygonLocalId,
+      pois,
+      selectedPoiLocalId,
       allowVertexDrag,
       resolveVertexDragTarget,
     };
@@ -413,11 +487,14 @@ export default function MapCanvasInner({
   }, [
     onMapClick,
     onSelectSubPolygonFromMap,
+    onPoiMarkerClick,
     vertices,
     isClosed,
     areaM2,
     subLayers,
     selectedSubPolygonLocalId,
+    pois,
+    selectedPoiLocalId,
     allowVertexDrag,
     resolveVertexDragTarget,
     initialCenter,
@@ -562,6 +639,8 @@ export default function MapCanvasInner({
       ro.disconnect();
       for (const m of markersRef.current) m.remove();
       markersRef.current = [];
+      for (const m of poiMarkersRef.current) m.remove();
+      poiMarkersRef.current = [];
       areaMarkerRef.current?.remove();
       areaMarkerRef.current = null;
       map.remove();
@@ -579,6 +658,8 @@ export default function MapCanvasInner({
     areaM2,
     subLayers,
     selectedSubPolygonLocalId,
+    pois,
+    selectedPoiLocalId,
     resolveVertexDragTarget,
     syncMap,
   ]);

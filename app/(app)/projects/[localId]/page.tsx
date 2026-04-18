@@ -16,6 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { CaptureButton } from "@/components/capture/CaptureButton";
 import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
+import { POIDetailSheet } from "@/components/project/POIDetailSheet";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { ProjectBottomPanel } from "@/components/project/ProjectBottomPanel";
 import { SubPolygonManager } from "@/components/project/SubPolygonManager";
@@ -30,14 +31,24 @@ import {
   listVerticesByPolygon,
   updateVertex,
 } from "@/lib/db/vertices";
+import { blobFromStored } from "@/lib/db/blobFromStored";
+import { deletePOI, listPoisByProject, updatePOI } from "@/lib/db/pois";
 import { getDb } from "@/lib/db/schema";
-import type { LocalPolygon, LocalProject, LocalVertex } from "@/lib/db/schema";
+import type {
+  LocalPOI,
+  LocalPolygon,
+  LocalProject,
+  LocalVertex,
+} from "@/lib/db/schema";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
 
 type ProjectDetailData = {
   project: LocalProject | undefined;
   main: LocalPolygon | undefined;
   vertices: LocalVertex[];
   subLayers: SubPolygonMapLayer[];
+  pois: LocalPOI[];
 };
 
 export default function ProjectDetailPage() {
@@ -55,6 +66,8 @@ export default function ProjectDetailPage() {
   const [selectedSubPolygonLocalId, setSelectedSubPolygonLocalId] = useState<
     string | null
   >(null);
+  const [poiSheetOpen, setPoiSheetOpen] = useState(false);
+  const [selectedPoi, setSelectedPoi] = useState<LocalPOI | null>(null);
 
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
@@ -78,7 +91,8 @@ export default function ProjectDetailPage() {
             vertices: await listVerticesByPolygon(polygon.localId),
           })),
         );
-        return { project, main, vertices, subLayers };
+        const pois = await listPoisByProject(localId);
+        return { project, main, vertices, subLayers, pois };
       } catch (e) {
         console.error("[TerrainCapture] proyecto Dexie", e);
         return {
@@ -86,6 +100,7 @@ export default function ProjectDetailPage() {
           main: undefined,
           vertices: [],
           subLayers: [],
+          pois: [],
         };
       }
     },
@@ -173,6 +188,73 @@ export default function ProjectDetailPage() {
     if (!open) setSelectedVertex(null);
   }, []);
 
+  const openPoiDetail = useCallback((poi: LocalPOI) => {
+    setSelectedPoi(poi);
+    setPoiSheetOpen(true);
+  }, []);
+
+  const onPoiSheetOpenChange = useCallback((open: boolean) => {
+    setPoiSheetOpen(open);
+    if (!open) setSelectedPoi(null);
+  }, []);
+
+  const handleDeletePoi = useCallback(async (localId: string) => {
+    await deletePOI(localId);
+  }, []);
+
+  const handleSavePoi = useCallback(
+    async (
+      localId: string,
+      input: {
+        label: string;
+        note: string | undefined;
+        photoFile: File | null;
+      },
+    ) => {
+      if (!data?.project) return;
+      if (input.photoFile) {
+        await updatePOI(localId, {
+          label: input.label,
+          note: input.note,
+          photoBlob: input.photoFile,
+        });
+      } else {
+        await updatePOI(localId, { label: input.label, note: input.note });
+      }
+      if (input.photoFile) {
+        try {
+          if (
+            !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+            !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          ) {
+            return;
+          }
+          const row = await getDb().pois.get(localId);
+          const uploadBlob = row ? blobFromStored(row) : undefined;
+          if (!uploadBlob) return;
+          const client = createBrowserSupabaseClient();
+          const path = `${data.project.localId}/pois/${localId}.jpg`;
+          const { publicUrl } = await uploadToProjectPhotosBucket(
+            client,
+            path,
+            uploadBlob,
+            uploadBlob.type || "image/jpeg",
+          );
+          await getDb().pois.update(localId, { photoUrl: publicUrl });
+        } catch {
+          /* opcional */
+        }
+      }
+    },
+    [data],
+  );
+
+  const selectedPoiForUi = useMemo(() => {
+    if (!selectedPoi || !data?.pois) return null;
+    const fresh = data.pois.find((p) => p.localId === selectedPoi.localId);
+    return fresh ?? selectedPoi;
+  }, [data, selectedPoi]);
+
   if (data === undefined) {
     return (
       <div className="flex flex-col gap-3">
@@ -235,6 +317,11 @@ export default function ProjectDetailPage() {
           subLayers={data.subLayers}
           selectedSubPolygonLocalId={selectedSubPolygonForUi}
           onSelectSubPolygonFromMap={setSelectedSubPolygonLocalId}
+          pois={data.pois}
+          selectedPoiLocalId={
+            poiSheetOpen ? selectedPoiForUi?.localId ?? null : null
+          }
+          onPoiMarkerClick={openPoiDetail}
           showUserLocation
           allowVertexDrag={allowVertexMapDrag}
           resolveVertexDragTarget={resolveVertexDragTarget}
@@ -250,15 +337,26 @@ export default function ProjectDetailPage() {
               </p>
             ) : null}
           </div>
-          <Link
-            href="/"
-            className={cn(
-              buttonVariants({ variant: "secondary", size: "sm" }),
-              "pointer-events-auto shrink-0 shadow-md",
-            )}
-          >
-            Lista
-          </Link>
+          <div className="pointer-events-auto flex shrink-0 gap-2">
+            <Link
+              href={`/projects/${data.project.localId}/pois`}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md",
+              )}
+            >
+              POIs
+            </Link>
+            <Link
+              href="/"
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md",
+              )}
+            >
+              Lista
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -297,6 +395,14 @@ export default function ProjectDetailPage() {
         onOpenChange={onVertexSheetOpenChange}
         onDelete={handleDeleteVertex}
         onSaveNote={handleSaveNote}
+      />
+
+      <POIDetailSheet
+        poi={selectedPoiForUi}
+        open={poiSheetOpen}
+        onOpenChange={onPoiSheetOpenChange}
+        onDelete={handleDeletePoi}
+        onSave={handleSavePoi}
       />
     </div>
   );

@@ -81,3 +81,73 @@ export async function createPOI(
 
   return localId;
 }
+
+export async function updatePOI(
+  localId: string,
+  patch: Partial<
+    Pick<
+      LocalPOI,
+      | "label"
+      | "note"
+      | "photoBlob"
+      | "photoUrl"
+      | "latitude"
+      | "longitude"
+      | "gpsAccuracyM"
+    >
+  >,
+): Promise<void> {
+  const db = getDb();
+
+  if (patch.photoBlob != null) {
+    let photoBytes: ArrayBuffer;
+    let photoMime: string;
+    try {
+      const prepared = await preparePhotoBlobForDexie(patch.photoBlob);
+      photoMime = prepared.type || "image/jpeg";
+      photoBytes = await prepared.arrayBuffer();
+    } catch (prepErr) {
+      await logDexieBlobFailure(
+        "preparePhotoBlobForDexie (updatePOI)",
+        prepErr,
+        {
+          localId,
+          rawSize: patch.photoBlob.size,
+          rawType: patch.photoBlob.type,
+        },
+      );
+      throw prepErr;
+    }
+    const rest = { ...patch };
+    delete rest.photoBlob;
+    try {
+      await db.pois.where("localId").equals(localId).modify((row) => {
+        Object.assign(row, rest, { photoBytes, photoMime });
+        delete row.photoBlob;
+      });
+    } catch (err) {
+      await logDexieBlobFailure("pois.modify(photoBytes)", err, {
+        localId,
+        patchKeys: Object.keys(rest),
+        photoBytesLength: photoBytes.byteLength,
+        photoMime,
+      });
+      throw err;
+    }
+    return;
+  }
+
+  try {
+    await db.pois.update(localId, patch);
+  } catch (err) {
+    await logDexieBlobFailure("pois.update", err, {
+      localId,
+      patchKeys: Object.keys(patch),
+    });
+    throw err;
+  }
+}
+
+export async function deletePOI(localId: string): Promise<void> {
+  await getDb().pois.delete(localId);
+}
