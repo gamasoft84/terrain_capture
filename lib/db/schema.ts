@@ -122,6 +122,11 @@ export class TerrainCaptureDB extends Dexie {
       syncQueue: "++id, entityType, entityLocalId, status, createdAt",
       tileCache: "url, zoom, cachedAt",
     });
+    // orderBy("updatedAt") en dashboard — el índice debe existir
+    this.version(2).stores({
+      projects:
+        "localId, serverId, status, syncStatus, createdAt, updatedAt",
+    });
   }
 }
 
