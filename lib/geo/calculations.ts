@@ -93,6 +93,14 @@ export function formatAreaDisplay(areaM2: number | null | undefined): string {
   return unit === "ha" ? `${value.toFixed(2)} ha` : `${value.toFixed(1)} m²`;
 }
 
+/** Perímetro en metros con un decimal (polilínea o polígono según datos en Dexie). */
+export function formatPerimeterDisplay(
+  meters: number | null | undefined,
+): string {
+  if (meters == null || !Number.isFinite(meters)) return "—";
+  return `${meters.toFixed(1)} m`;
+}
+
 /**
  * Cota orientativa de incertidumbre de área (m²) usando la precisión horizontal
  * declarada por vértice (`gpsAccuracyM`, o 5 m si falta). Heurística simple, no

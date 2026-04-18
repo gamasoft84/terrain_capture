@@ -5,11 +5,16 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { blobFromStored } from "@/lib/db/blobFromStored";
-import type { LocalPolygon, LocalVertex } from "@/lib/db/schema";
-import {
-  estimateAreaError,
-  formatAreaDisplay,
-} from "@/lib/geo/calculations";
+import type {
+  LocalPOI,
+  LocalPolygon,
+  LocalProjectPhoto,
+  LocalVertex,
+} from "@/lib/db/schema";
+import { formatAreaDisplay, formatPerimeterDisplay } from "@/lib/geo/calculations";
+import { buildProjectStats } from "@/lib/project/buildProjectStats";
+import type { SubPolygonMapLayer } from "@/components/map/MapCanvas";
+import { PolygonStats } from "./PolygonStats";
 
 function VertexStripThumb({
   vertex: v,
@@ -58,6 +63,9 @@ function VertexStripThumb({
 export interface ProjectBottomPanelProps {
   vertices: LocalVertex[];
   main: LocalPolygon | undefined;
+  subLayers?: SubPolygonMapLayer[];
+  pois?: LocalPOI[];
+  projectPhotos?: LocalProjectPhoto[];
   onCaptureClick: () => void;
   onClosePolygon: () => void;
   onVertexClick: (vertex: LocalVertex, displayIndex: number) => void;
@@ -69,6 +77,9 @@ export interface ProjectBottomPanelProps {
 export function ProjectBottomPanel({
   vertices,
   main,
+  subLayers = [],
+  pois = [],
+  projectPhotos = [],
   onCaptureClick,
   onClosePolygon,
   onVertexClick,
@@ -77,15 +88,21 @@ export function ProjectBottomPanel({
 }: ProjectBottomPanelProps) {
   const [expanded, setExpanded] = useState(true);
 
+  const statsSummary = useMemo(() => {
+    if (!main) return null;
+    return buildProjectStats({
+      main,
+      mainVertices: vertices,
+      subLayers,
+      pois,
+      projectPhotos,
+    });
+  }, [main, vertices, subLayers, pois, projectPhotos]);
+
   const areaLabel = formatAreaDisplay(main?.areaM2);
-  const areaUncertaintyM2 = useMemo(() => {
-    if (!main?.isClosed || vertices.length < 3) return 0;
-    return estimateAreaError(vertices);
-  }, [main?.isClosed, vertices]);
-  const perimeterLabel =
-    main?.perimeterM != null && Number.isFinite(main.perimeterM)
-      ? `${main.perimeterM.toFixed(1)} m`
-      : "—";
+  const perimeterLabel = formatPerimeterDisplay(main?.perimeterM);
+  const vertexCountCollapsed = statsSummary?.totalVertices ?? vertices.length;
+
   const canClose =
     Boolean(main) &&
     !main!.isClosed &&
@@ -98,7 +115,7 @@ export function ProjectBottomPanel({
     <div
       className={cn(
         "border-border bg-card/95 supports-[backdrop-filter]:bg-card/90 fixed right-0 bottom-16 left-0 z-[32] border-t shadow-[0_-4px_24px_rgba(0,0,0,0.35)] backdrop-blur-md",
-        expanded ? "max-h-[min(52vh,420px)]" : "max-h-none",
+        expanded ? "max-h-[min(58vh,520px)]" : "max-h-none",
       )}
     >
       <button
@@ -116,86 +133,64 @@ export function ProjectBottomPanel({
       </button>
 
       {expanded ? (
-        <div className="flex max-h-[min(48vh,380px)] flex-col gap-3 px-3 pb-3">
-          {subPolygonManager ? (
-            <div className="min-h-0 shrink-0">{subPolygonManager}</div>
-          ) : null}
-          <div className="text-muted-foreground grid grid-cols-3 gap-2 text-center text-xs">
-            <div>
-              <div className="text-foreground font-mono text-sm font-semibold">
-                {vertices.length}
-              </div>
-              <div>Vértices</div>
-            </div>
-            <div>
-              <div className="text-foreground font-mono text-sm font-semibold">
-                {areaLabel}
-              </div>
-              <div>Área</div>
-            </div>
-            <div>
-              <div className="text-foreground font-mono text-sm font-semibold">
-                {perimeterLabel}
-              </div>
-              <div>Perímetro</div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              className="min-h-12 flex-1"
-              disabled={!main}
-              onClick={onCaptureClick}
-            >
-              Capturar vértice
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="min-h-12 flex-1"
-              disabled={!canClose}
-              onClick={onClosePolygon}
-            >
-              {main?.isClosed
-                ? "Polígono cerrado"
-                : closePolygonBusy
-                  ? "Cerrando…"
-                  : vertices.length < 3
-                    ? "Cerrar (mín. 3 vértices)"
-                    : "Cerrar polígono"}
-            </Button>
-          </div>
-
-          <p className="text-muted-foreground text-[10px] leading-snug">
-            Área y perímetro son estimaciones (Turf sobre lon/lat; no sustituye
-            topografía certificada).
-            {areaUncertaintyM2 > 0 ? (
-              <>
-                {" "}
-                Incertidumbre orientativa del área ≈ ±
-                {Math.round(areaUncertaintyM2)} m² según precisión GPS por
-                vértice.
-              </>
+        <div className="flex max-h-[min(54vh,480px)] min-h-0 flex-col overflow-hidden px-3 pb-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+            {subPolygonManager ? (
+              <div className="min-h-0 shrink-0">{subPolygonManager}</div>
             ) : null}
-          </p>
+            {main ? (
+              <PolygonStats
+                main={main}
+                mainVertices={vertices}
+                subLayers={subLayers}
+                pois={pois}
+                projectPhotos={projectPhotos}
+              />
+            ) : null}
 
-          <div className="min-h-0 flex-1">
-            <p className="text-muted-foreground mb-1.5 text-[11px] font-medium tracking-wide uppercase">
-              Vértices
-            </p>
-            <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
-              {sorted.map((v, i) => {
-                const displayIndex = i + 1;
-                return (
-                  <VertexStripThumb
-                    key={v.localId}
-                    vertex={v}
-                    displayIndex={displayIndex}
-                    onSelect={() => onVertexClick(v, displayIndex)}
-                  />
-                );
-              })}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                className="min-h-12 flex-1"
+                disabled={!main}
+                onClick={onCaptureClick}
+              >
+                Capturar vértice
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-12 flex-1"
+                disabled={!canClose}
+                onClick={onClosePolygon}
+              >
+                {main?.isClosed
+                  ? "Polígono cerrado"
+                  : closePolygonBusy
+                    ? "Cerrando…"
+                    : vertices.length < 3
+                      ? "Cerrar (mín. 3 vértices)"
+                      : "Cerrar polígono"}
+              </Button>
+            </div>
+
+            <div className="min-h-0 shrink-0">
+              <p className="text-muted-foreground mb-1.5 text-[11px] font-medium tracking-wide uppercase">
+                Vértices (principal)
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                {sorted.map((v, i) => {
+                  const displayIndex = i + 1;
+                  return (
+                    <VertexStripThumb
+                      key={v.localId}
+                      vertex={v}
+                      displayIndex={displayIndex}
+                      onSelect={() => onVertexClick(v, displayIndex)}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -203,7 +198,7 @@ export function ProjectBottomPanel({
         <div className="text-muted-foreground flex items-center justify-center gap-3 px-3 pb-2 text-xs">
           <span>
             <span className="text-foreground font-mono font-semibold">
-              {vertices.length}
+              {vertexCountCollapsed}
             </span>{" "}
             vért.
           </span>

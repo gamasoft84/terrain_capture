@@ -32,12 +32,14 @@ import {
   updateVertex,
 } from "@/lib/db/vertices";
 import { blobFromStored } from "@/lib/db/blobFromStored";
+import { listProjectPhotos } from "@/lib/db/projectPhotos";
 import { deletePOI, listPoisByProject, updatePOI } from "@/lib/db/pois";
 import { getDb } from "@/lib/db/schema";
 import type {
   LocalPOI,
   LocalPolygon,
   LocalProject,
+  LocalProjectPhoto,
   LocalVertex,
 } from "@/lib/db/schema";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -49,6 +51,7 @@ type ProjectDetailData = {
   vertices: LocalVertex[];
   subLayers: SubPolygonMapLayer[];
   pois: LocalPOI[];
+  projectPhotos: LocalProjectPhoto[];
 };
 
 export default function ProjectDetailPage() {
@@ -92,7 +95,8 @@ export default function ProjectDetailPage() {
           })),
         );
         const pois = await listPoisByProject(localId);
-        return { project, main, vertices, subLayers, pois };
+        const projectPhotos = await listProjectPhotos(localId);
+        return { project, main, vertices, subLayers, pois, projectPhotos };
       } catch (e) {
         console.error("[TerrainCapture] proyecto Dexie", e);
         return {
@@ -101,6 +105,7 @@ export default function ProjectDetailPage() {
           vertices: [],
           subLayers: [],
           pois: [],
+          projectPhotos: [],
         };
       }
     },
@@ -382,6 +387,9 @@ export default function ProjectDetailPage() {
       <ProjectBottomPanel
         vertices={data.vertices}
         main={data.main}
+        subLayers={data.subLayers}
+        pois={data.pois}
+        projectPhotos={data.projectPhotos}
         onCaptureClick={() => setCaptureSheetOpen(true)}
         onClosePolygon={() => void handleClosePolygon()}
         onVertexClick={openVertexDetail}
