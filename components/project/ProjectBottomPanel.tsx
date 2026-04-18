@@ -135,9 +135,6 @@ export function ProjectBottomPanel({
       {expanded ? (
         <div className="flex max-h-[min(54vh,480px)] min-h-0 flex-col overflow-hidden px-3 pb-3">
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
-            {subPolygonManager ? (
-              <div className="min-h-0 shrink-0">{subPolygonManager}</div>
-            ) : null}
             {main ? (
               <PolygonStats
                 main={main}
@@ -192,6 +189,10 @@ export function ProjectBottomPanel({
                 })}
               </div>
             </div>
+
+            {subPolygonManager ? (
+              <div className="min-h-0 shrink-0">{subPolygonManager}</div>
+            ) : null}
           </div>
         </div>
       ) : (
