@@ -40,7 +40,16 @@ export async function deleteVertex(localId: string): Promise<void> {
 export async function updateVertex(
   localId: string,
   patch: Partial<
-    Pick<LocalVertex, "note" | "photoBlob" | "photoUrl" | "gpsAccuracyM">
+    Pick<
+      LocalVertex,
+      | "note"
+      | "photoBlob"
+      | "photoUrl"
+      | "gpsAccuracyM"
+      | "latitude"
+      | "longitude"
+      | "captureMethod"
+    >
   >,
 ): Promise<void> {
   await getDb().vertices.update(localId, patch);

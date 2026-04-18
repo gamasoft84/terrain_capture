@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import type { Feature, FeatureCollection, Position } from "geojson";
 import * as turf from "@turf/turf";
 import { cn } from "@/lib/utils";
 import type { LocalVertex } from "@/lib/db/schema";
+import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
+import { updateVertex } from "@/lib/db/vertices";
 
 const ESRI_TILE =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -26,6 +28,13 @@ export interface MapCanvasProps {
   initialCenter?: [number, number];
   initialZoom?: number;
   className?: string;
+  /** Si true y hay `vertexDragTarget`, los marcadores P1… son arrastrables (pruebas). */
+  allowVertexDrag?: boolean;
+  /** Polígono al que pertenecen los vértices (para persistir coords al soltar). */
+  vertexDragTarget?: {
+    polygonLocalId: string;
+    polygonIsClosed: boolean;
+  } | null;
 }
 
 function sortedVertices(vertices: LocalVertex[]): LocalVertex[] {
@@ -67,10 +76,13 @@ function buildFeatureCollection(
   return { type: "FeatureCollection", features };
 }
 
-function createVertexMarkerEl(index: number): HTMLDivElement {
+function createVertexMarkerEl(index: number, draggable: boolean): HTMLDivElement {
   const el = document.createElement("div");
-  el.className =
-    "border-background flex size-8 items-center justify-center rounded-full border-2 bg-primary text-xs font-bold text-primary-foreground shadow-md";
+  el.className = cn(
+    "border-background flex size-8 items-center justify-center rounded-full border-2 bg-primary text-xs font-bold text-primary-foreground shadow-md",
+    draggable &&
+      "cursor-grab touch-none ring-2 ring-amber-500/80 active:cursor-grabbing",
+  );
   el.textContent = `P${index + 1}`;
   return el;
 }
@@ -92,27 +104,60 @@ export default function MapCanvasInner({
   initialCenter = DEFAULT_CENTER,
   initialZoom = DEFAULT_ZOOM,
   className,
+  allowVertexDrag = false,
+  vertexDragTarget = null,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const areaMarkerRef = useRef<maplibregl.Marker | null>(null);
   const styleReadyRef = useRef(false);
+  const vertexCountForFitRef = useRef(-1);
+  const didFitForCurrentVertexSetRef = useRef(false);
   const onClickRef = useRef(onMapClick);
-  onClickRef.current = onMapClick;
-
-  const dataRef = useRef({ vertices, isClosed, areaM2 });
-  dataRef.current = { vertices, isClosed, areaM2 };
-
+  const dataRef = useRef({
+    vertices,
+    isClosed,
+    areaM2,
+    allowVertexDrag,
+    vertexDragTarget,
+  });
   const mountOptsRef = useRef({
     initialCenter,
     initialZoom,
     showUserLocation,
   });
-  mountOptsRef.current = { initialCenter, initialZoom, showUserLocation };
+
+  useLayoutEffect(() => {
+    onClickRef.current = onMapClick;
+    dataRef.current = {
+      vertices,
+      isClosed,
+      areaM2,
+      allowVertexDrag,
+      vertexDragTarget,
+    };
+    mountOptsRef.current = { initialCenter, initialZoom, showUserLocation };
+  }, [
+    onMapClick,
+    vertices,
+    isClosed,
+    areaM2,
+    allowVertexDrag,
+    vertexDragTarget,
+    initialCenter,
+    initialZoom,
+    showUserLocation,
+  ]);
 
   const syncMap = useCallback((map: maplibregl.Map) => {
-    const { vertices: v, isClosed: closed, areaM2: area } = dataRef.current;
+    const {
+      vertices: v,
+      isClosed: closed,
+      areaM2: area,
+      allowVertexDrag: dragPref,
+      vertexDragTarget: dragCtx,
+    } = dataRef.current;
     const sorted = sortedVertices(v);
     const coords: Position[] = sorted.map((vertex) => [
       vertex.longitude,
@@ -127,12 +172,39 @@ export default function MapCanvasInner({
     for (const m of markersRef.current) m.remove();
     markersRef.current = [];
 
+    const dragEnabled = Boolean(dragPref && dragCtx);
+
     sorted.forEach((vertex, i) => {
       const marker = new maplibregl.Marker({
-        element: createVertexMarkerEl(i),
+        element: createVertexMarkerEl(i, dragEnabled),
+        draggable: dragEnabled,
       })
         .setLngLat([vertex.longitude, vertex.latitude])
         .addTo(map);
+
+      if (dragEnabled && dragCtx) {
+        marker.on("dragend", () => {
+          const ll = marker.getLngLat();
+          const ctx = dataRef.current.vertexDragTarget;
+          if (!ctx) return;
+          void (async () => {
+            try {
+              await updateVertex(vertex.localId, {
+                latitude: ll.lat,
+                longitude: ll.lng,
+                captureMethod: "manual_map",
+              });
+              await refreshPolygonMetricsFromVertices(
+                ctx.polygonLocalId,
+                ctx.polygonIsClosed,
+              );
+            } catch {
+              marker.setLngLat([vertex.longitude, vertex.latitude]);
+            }
+          })();
+        });
+      }
+
       markersRef.current.push(marker);
     });
 
@@ -150,14 +222,31 @@ export default function MapCanvasInner({
         .addTo(map);
     }
 
-    if (coords.length === 0) return;
+    if (coords.length === 0) {
+      vertexCountForFitRef.current = -1;
+      didFitForCurrentVertexSetRef.current = false;
+      return;
+    }
 
     const bounds = new maplibregl.LngLatBounds(
       coords[0] as [number, number],
       coords[0] as [number, number],
     );
     for (const pt of coords) bounds.extend(pt as [number, number]);
-    map.fitBounds(bounds, { padding: 56, maxZoom: 18, duration: 500 });
+
+    if (!dragPref) {
+      map.fitBounds(bounds, { padding: 56, maxZoom: 18, duration: 500 });
+      return;
+    }
+
+    if (coords.length !== vertexCountForFitRef.current) {
+      vertexCountForFitRef.current = coords.length;
+      didFitForCurrentVertexSetRef.current = false;
+    }
+    if (!didFitForCurrentVertexSetRef.current) {
+      map.fitBounds(bounds, { padding: 56, maxZoom: 18, duration: 500 });
+      didFitForCurrentVertexSetRef.current = true;
+    }
   }, []);
 
   useEffect(() => {
@@ -273,7 +362,14 @@ export default function MapCanvasInner({
     const map = mapRef.current;
     if (!map || !styleReadyRef.current) return;
     syncMap(map);
-  }, [vertices, isClosed, areaM2, syncMap]);
+  }, [
+    vertices,
+    isClosed,
+    areaM2,
+    allowVertexDrag,
+    vertexDragTarget,
+    syncMap,
+  ]);
 
   return (
     <div

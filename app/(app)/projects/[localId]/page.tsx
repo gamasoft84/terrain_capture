@@ -16,6 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { CaptureButton } from "@/components/capture/CaptureButton";
 import MapCanvas from "@/components/map/MapCanvas";
+import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { ProjectBottomPanel } from "@/components/project/ProjectBottomPanel";
 import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
@@ -30,6 +31,7 @@ import type { LocalVertex } from "@/lib/db/schema";
 export default function ProjectDetailPage() {
   const params = useParams();
   const localId = typeof params.localId === "string" ? params.localId : "";
+  const { allowVertexMapDrag } = useMapVertexDrag();
 
   const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [vertexSheetOpen, setVertexSheetOpen] = useState(false);
@@ -160,6 +162,11 @@ export default function ProjectDetailPage() {
           isClosed={data.main.isClosed}
           areaM2={data.main.areaM2 ?? null}
           showUserLocation
+          allowVertexDrag={allowVertexMapDrag}
+          vertexDragTarget={{
+            polygonLocalId: data.main.localId,
+            polygonIsClosed: data.main.isClosed,
+          }}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
