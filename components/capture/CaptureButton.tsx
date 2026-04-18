@@ -40,6 +40,8 @@ export interface CaptureButtonProps {
   captureSheetOpen?: boolean;
   onCaptureSheetOpenChange?: (open: boolean) => void;
   showFab?: boolean;
+  /** Si es false, se oculta capturar vértice de sub-área (panel principal desactivó sub-áreas). */
+  enableSubPolygonCapture?: boolean;
 }
 
 function geoErrorMessage(err: GeolocationPositionError): string {
@@ -77,6 +79,7 @@ export function CaptureButton({
   captureSheetOpen: captureSheetOpenProp,
   onCaptureSheetOpenChange,
   showFab = true,
+  enableSubPolygonCapture = true,
 }: CaptureButtonProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const controlled =
@@ -369,18 +372,22 @@ export function CaptureButton({
                     Polígono del proyecto
                   </span>
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
-                  onClick={pickSubVertex}
-                >
-                  <Layers className="size-5 shrink-0" aria-hidden />
-                  <span className="text-sm font-medium">Vértice de sub-área</span>
-                  <span className="text-muted-foreground text-xs font-normal">
-                    Cabaña, pozo, etc.
-                  </span>
-                </Button>
+                {enableSubPolygonCapture ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
+                    onClick={pickSubVertex}
+                  >
+                    <Layers className="size-5 shrink-0" aria-hidden />
+                    <span className="text-sm font-medium">
+                      Vértice de sub-área
+                    </span>
+                    <span className="text-muted-foreground text-xs font-normal">
+                      Cabaña, pozo, etc.
+                    </span>
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"

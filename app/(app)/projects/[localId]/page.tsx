@@ -19,7 +19,10 @@ import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
 import { POIDetailSheet } from "@/components/project/POIDetailSheet";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { ProjectBottomPanel } from "@/components/project/ProjectBottomPanel";
-import { SubPolygonManager } from "@/components/project/SubPolygonManager";
+import {
+  SubPolygonWorkflow,
+  useSeedSubAreasWorkflow,
+} from "@/components/project/SubPolygonWorkflow";
 import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import {
@@ -71,6 +74,8 @@ export default function ProjectDetailPage() {
   >(null);
   const [poiSheetOpen, setPoiSheetOpen] = useState(false);
   const [selectedPoi, setSelectedPoi] = useState<LocalPOI | null>(null);
+  const [subAreasWorkflowEnabled, setSubAreasWorkflowEnabled] =
+    useState(false);
 
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
@@ -110,6 +115,11 @@ export default function ProjectDetailPage() {
       }
     },
     [localId],
+  );
+
+  useSeedSubAreasWorkflow(
+    data === undefined ? undefined : data.subLayers.length,
+    setSubAreasWorkflowEnabled,
   );
 
   const selectedSubPolygonForUi = useMemo(() => {
@@ -382,6 +392,7 @@ export default function ProjectDetailPage() {
         showFab={false}
         captureSheetOpen={captureSheetOpen}
         onCaptureSheetOpenChange={setCaptureSheetOpen}
+        enableSubPolygonCapture={subAreasWorkflowEnabled}
       />
 
       <ProjectBottomPanel
@@ -395,11 +406,13 @@ export default function ProjectDetailPage() {
         onVertexClick={openVertexDetail}
         closePolygonBusy={closePolygonBusy}
         subPolygonManager={
-          <SubPolygonManager
+          <SubPolygonWorkflow
             projectLocalId={data.project.localId}
             subPolygons={data.subLayers.map((s) => s.polygon)}
             selectedSubPolygonLocalId={selectedSubPolygonForUi}
             onSelectSubPolygon={setSelectedSubPolygonLocalId}
+            workflowEnabled={subAreasWorkflowEnabled}
+            onWorkflowEnabledChange={setSubAreasWorkflowEnabled}
           />
         }
       />
