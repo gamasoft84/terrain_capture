@@ -683,6 +683,17 @@ export default function MapCanvasInner({
     });
 
     map.on("load", () => {
+      /* Deja espacio bajo la fila Galería / POIs / Lista (overlay en la página). */
+      const topRight = map
+        .getContainer()
+        .querySelector<HTMLElement>(".maplibregl-ctrl-top-right");
+      const zoomGroup = topRight?.querySelector<HTMLElement>(
+        ".maplibregl-ctrl-group",
+      );
+      if (zoomGroup) {
+        zoomGroup.style.marginTop = "3.25rem";
+      }
+
       map.addSource(SOURCE_ID, {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
