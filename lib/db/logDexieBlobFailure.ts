@@ -1,3 +1,5 @@
+import { isDexieDebugEnabled } from "@/lib/db/dexieDebugLog";
+
 const TAG = "[TerrainCapture:Dexie]";
 
 /** Contexto útil cuando IndexedDB rechaza un Blob (p. ej. Safari UnknownError). */
@@ -24,6 +26,8 @@ export async function logDexieBlobFailure(
     code,
     ...meta,
   });
+
+  if (!isDexieDebugEnabled()) return;
 
   try {
     const est = await globalThis.navigator?.storage?.estimate?.();

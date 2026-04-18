@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { dexieDebugInfo } from "@/lib/db/dexieDebugLog";
 import { logDexieBlobFailure } from "@/lib/db/logDexieBlobFailure";
 import { preparePhotoBlobForDexie } from "@/lib/db/preparePhotoBlobForDexie";
 import { getDb } from "@/lib/db/schema";
@@ -59,14 +60,11 @@ export async function createVertex(
     if (photoBytes == null) {
       await db.vertices.add(core);
     } else {
-      console.info(
-        "[TerrainCapture:Dexie] createVertex 2 pasos (add → update photoBytes)",
-        {
-          localId,
-          byteLength: photoBytes.byteLength,
-          photoMime,
-        },
-      );
+      dexieDebugInfo("createVertex 2 pasos (add → update photoBytes)", {
+        localId,
+        byteLength: photoBytes.byteLength,
+        photoMime,
+      });
       await db.transaction("rw", db.vertices, async () => {
         await db.vertices.add(core);
         await db.vertices.update(localId, { photoBytes, photoMime });
@@ -112,14 +110,15 @@ export async function updateVertex(
     >
   >,
 ): Promise<void> {
-  let next: Partial<LocalVertex>;
+  const db = getDb();
+
   if (patch.photoBlob != null) {
+    let photoBytes: ArrayBuffer;
+    let photoMime: string;
     try {
       const prepared = await preparePhotoBlobForDexie(patch.photoBlob);
-      const photoMime = prepared.type || "image/jpeg";
-      const photoBytes = await prepared.arrayBuffer();
-      const { photoBlob: _ignored, ...rest } = patch;
-      next = { ...rest, photoBytes, photoMime };
+      photoMime = prepared.type || "image/jpeg";
+      photoBytes = await prepared.arrayBuffer();
     } catch (prepErr) {
       await logDexieBlobFailure(
         "preparePhotoBlobForDexie (updateVertex)",
@@ -132,19 +131,32 @@ export async function updateVertex(
       );
       throw prepErr;
     }
-  } else {
-    next = patch;
+    const rest = { ...patch };
+    delete rest.photoBlob;
+    try {
+      await db.vertices.where("localId").equals(localId).modify((v) => {
+        Object.assign(v, rest, { photoBytes, photoMime });
+        delete v.photoBlob;
+      });
+    } catch (err) {
+      await logDexieBlobFailure("vertices.modify(photoBytes)", err, {
+        localId,
+        patchKeys: Object.keys(rest),
+        photoBytesLength: photoBytes.byteLength,
+        photoMime,
+      });
+      throw err;
+    }
+    return;
   }
 
   try {
-    await getDb().vertices.update(localId, next);
+    await db.vertices.update(localId, patch);
   } catch (err) {
     await logDexieBlobFailure("vertices.update", err, {
       localId,
-      patchKeys: Object.keys(next),
-      photoBytesLength: next.photoBytes?.byteLength,
-      photoMime: next.photoMime,
-      hasLegacyPhotoBlob: next.photoBlob != null,
+      patchKeys: Object.keys(patch),
+      hasLegacyPhotoBlob: patch.photoBlob != null,
     });
     throw err;
   }

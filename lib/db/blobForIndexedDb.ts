@@ -1,3 +1,5 @@
+import { dexieDebugInfo, dexieDebugWarn } from "@/lib/db/dexieDebugLog";
+
 /**
  * Safari/WebKit a veces lanza "Error preparing Blob/File data…" al guardar
  * un `File` o incluso un `Blob` poco “desacoplado” en IndexedDB.
@@ -8,14 +10,14 @@ export async function cloneBlobForIndexedDb(source: Blob): Promise<Blob> {
   try {
     const buf = await source.arrayBuffer();
     const out = new Blob([buf], { type });
-    console.info("[TerrainCapture:Dexie] cloneBuffer arrayBuffer OK", {
+    dexieDebugInfo("cloneBuffer arrayBuffer OK", {
       inSize: source.size,
       outSize: out.size,
       type: out.type,
     });
     return out;
   } catch (e) {
-    console.error("[TerrainCapture:Dexie] cloneBuffer arrayBuffer falló → slice", {
+    dexieDebugWarn("cloneBuffer arrayBuffer falló → slice", {
       message: e instanceof Error ? e.message : String(e),
       inSize: source.size,
       type,

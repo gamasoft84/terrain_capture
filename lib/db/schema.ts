@@ -1,4 +1,5 @@
-import Dexie, { type Table } from "dexie";
+import Dexie, { type Table, type Transaction } from "dexie";
+import { isDexieDebugEnabled } from "@/lib/db/dexieDebugLog";
 
 export interface LocalProject {
   localId: string;
@@ -62,7 +63,10 @@ export interface LocalPOI {
   latitude: number;
   longitude: number;
   gpsAccuracyM?: number;
+  /** Legado: preferir `photoBytes` + `photoMime` en WebKit. */
   photoBlob?: Blob;
+  photoBytes?: ArrayBuffer;
+  photoMime?: string;
   photoUrl?: string;
   note?: string;
   capturedAt: Date;
@@ -107,6 +111,43 @@ export interface CachedTile {
   y: number;
 }
 
+type LegacyPhotoRow = {
+  localId: string;
+  photoBlob?: Blob;
+  photoBytes?: ArrayBuffer;
+  photoMime?: string;
+};
+
+async function migrateLegacyPhotoBlobsInTx(
+  tx: Transaction,
+  tableName: "vertices" | "projectPhotos" | "pois",
+): Promise<void> {
+  const table = tx.table(tableName) as Table<LegacyPhotoRow, string>;
+  const rows = await table.toArray();
+  for (const row of rows) {
+    const b = row.photoBlob;
+    if (!b) continue;
+    if (row.photoBytes != null && row.photoBytes.byteLength > 0) continue;
+    try {
+      const mime = b.type || "image/jpeg";
+      const bytes = await b.arrayBuffer();
+      await table.where("localId").equals(row.localId).modify((r) => {
+        r.photoBytes = bytes;
+        r.photoMime = mime;
+        delete r.photoBlob;
+      });
+    } catch (e) {
+      if (isDexieDebugEnabled()) {
+        console.warn(
+          `[TerrainCapture:Dexie] migrate legacy ${tableName} skip`,
+          row.localId,
+          e,
+        );
+      }
+    }
+  }
+}
+
 export class TerrainCaptureDB extends Dexie {
   projects!: Table<LocalProject, string>;
   polygons!: Table<LocalPolygon, string>;
@@ -133,6 +174,23 @@ export class TerrainCaptureDB extends Dexie {
       projects:
         "localId, serverId, status, syncStatus, createdAt, updatedAt",
     });
+    this.version(3)
+      .stores({
+        projects:
+          "localId, serverId, status, syncStatus, createdAt, updatedAt",
+        polygons: "localId, serverId, projectLocalId, type, syncStatus",
+        vertices: "localId, serverId, polygonLocalId, orderIndex, syncStatus",
+        pois: "localId, serverId, projectLocalId, syncStatus",
+        projectPhotos:
+          "localId, serverId, projectLocalId, syncStatus, capturedAt",
+        syncQueue: "++id, entityType, entityLocalId, status, createdAt",
+        tileCache: "url, zoom, cachedAt",
+      })
+      .upgrade(async (tx) => {
+        await migrateLegacyPhotoBlobsInTx(tx, "vertices");
+        await migrateLegacyPhotoBlobsInTx(tx, "projectPhotos");
+        await migrateLegacyPhotoBlobsInTx(tx, "pois");
+      });
   }
 }
 

@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { uploadProjectVertexPhoto } from "@/lib/supabase/storage";
+import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
-import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
-import { createVertex, nextOrderIndexForPolygon } from "@/lib/db/vertices";
+import { createPOI } from "@/lib/db/pois";
 import {
   accuracyLevelFromMeters,
   type GPSReading,
@@ -32,9 +32,9 @@ function accuracyColor(
   }
 }
 
-async function uploadVertexPhotoInBackground(
+async function uploadPoiPhotoInBackground(
   projectLocalId: string,
-  vertexLocalId: string,
+  poiLocalId: string,
   blob: Blob,
 ): Promise<void> {
   try {
@@ -45,40 +45,36 @@ async function uploadVertexPhotoInBackground(
       return;
     }
     const client = createBrowserSupabaseClient();
-    const path = `${projectLocalId}/vertices/${vertexLocalId}.jpg`;
-    const { publicUrl } = await uploadProjectVertexPhoto(
+    const path = `${projectLocalId}/pois/${poiLocalId}.jpg`;
+    const { publicUrl } = await uploadToProjectPhotosBucket(
       client,
       path,
       blob,
       blob.type || "image/jpeg",
     );
-    await getDb().vertices.update(vertexLocalId, { photoUrl: publicUrl });
+    await getDb().pois.update(poiLocalId, { photoUrl: publicUrl });
   } catch {
-    // Fase 1: no bloquear captura si falla red o Storage
+    /* Fase 1–2: no bloquear captura */
   }
 }
 
-export interface VertexFormProps {
+export interface POIFormProps {
   gpsReading: GPSReading;
-  captureMethod: "gps_single" | "gps_averaged";
-  polygonLocalId: string;
   projectLocalId: string;
-  polygonIsClosed: boolean;
   onCancel: () => void;
   onSaved: () => void;
 }
 
-export function VertexForm({
+export function POIForm({
   gpsReading,
-  captureMethod,
-  polygonLocalId,
   projectLocalId,
-  polygonIsClosed,
   onCancel,
   onSaved,
-}: VertexFormProps) {
+}: POIFormProps) {
+  const labelId = useId();
   const noteId = useId();
   const fileId = useId();
+  const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -110,35 +106,32 @@ export function VertexForm({
 
   async function handleSave() {
     setError(null);
+    const trimmed = label.trim();
+    if (!trimmed) {
+      setError("La etiqueta del punto es obligatoria.");
+      return;
+    }
     if (!file) {
-      setError("La foto del vértice es obligatoria.");
+      setError("La foto del punto es obligatoria.");
       return;
     }
     setSubmitting(true);
     try {
-      const orderIndex = await nextOrderIndexForPolygon(polygonLocalId);
-      const vertexLocalId = await createVertex({
-        polygonLocalId,
-        orderIndex,
+      const poiLocalId = await createPOI({
+        projectLocalId,
+        label: trimmed,
         latitude: gpsReading.latitude,
         longitude: gpsReading.longitude,
         gpsAccuracyM: gpsReading.accuracy,
-        altitudeM: gpsReading.altitude ?? undefined,
-        captureMethod,
-        photoBlob: file,
         note: note.trim() || undefined,
+        photoBlob: file,
       });
 
-      await refreshPolygonMetricsFromVertices(
-        polygonLocalId,
-        polygonIsClosed,
-      );
-
-      const row = await getDb().vertices.get(vertexLocalId);
+      const row = await getDb().pois.get(poiLocalId);
       const uploadBlob = row ? blobFromStored(row) : undefined;
-      void uploadVertexPhotoInBackground(
+      void uploadPoiPhotoInBackground(
         projectLocalId,
-        vertexLocalId,
+        poiLocalId,
         uploadBlob ?? file,
       );
 
@@ -158,7 +151,7 @@ export function VertexForm({
     <div className="flex flex-col gap-4">
       <div className="space-y-2">
         <p className="text-muted-foreground text-xs">
-          Coordenadas (estimación GPS, no replanteo geodésico).
+          Punto de interés — misma posición GPS que elegiste arriba.
         </p>
         <div className="font-mono text-sm leading-relaxed">
           <div>
@@ -185,7 +178,18 @@ export function VertexForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={fileId}>Foto del vértice</Label>
+        <Label htmlFor={labelId}>Etiqueta</Label>
+        <Input
+          id={labelId}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Pozo, árbol, cisterna…"
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={fileId}>Foto</Label>
         <input
           ref={fileInputRef}
           id={fileId}
@@ -205,10 +209,10 @@ export function VertexForm({
         </Button>
         {previewUrl ? (
           <div className="border-border aspect-video max-h-48 w-full overflow-hidden rounded-md border">
-            {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL local */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrl}
-              alt="Vista previa vértice"
+              alt="Vista previa POI"
               className="size-full object-cover"
             />
           </div>
@@ -222,7 +226,7 @@ export function VertexForm({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          placeholder="Terreno, referencia, etc."
+          placeholder="Detalle visible en reporte"
         />
       </div>
 
@@ -248,7 +252,7 @@ export function VertexForm({
           disabled={submitting}
           onClick={() => void handleSave()}
         >
-          {submitting ? "Guardando…" : "Guardar vértice"}
+          {submitting ? "Guardando…" : "Guardar POI"}
         </Button>
       </div>
     </div>

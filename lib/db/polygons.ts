@@ -22,6 +22,15 @@ export async function listPolygonsByProject(
     .toArray();
 }
 
+export async function listSubPolygonsByProject(
+  projectLocalId: string,
+): Promise<LocalPolygon[]> {
+  const list = await listPolygonsByProject(projectLocalId);
+  return list
+    .filter((p) => p.type === "sub")
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+}
+
 export async function createPolygon(
   input: Omit<
     LocalPolygon,
