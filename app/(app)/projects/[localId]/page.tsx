@@ -339,6 +339,15 @@ export default function ProjectDetailPage() {
           </div>
           <div className="pointer-events-auto flex shrink-0 gap-2">
             <Link
+              href={`/projects/${data.project.localId}/gallery`}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md",
+              )}
+            >
+              Galería
+            </Link>
+            <Link
               href={`/projects/${data.project.localId}/pois`}
               className={cn(
                 buttonVariants({ variant: "secondary", size: "sm" }),
