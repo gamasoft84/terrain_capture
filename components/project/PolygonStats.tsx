@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LocalPOI, LocalPolygon, LocalProjectPhoto, LocalVertex } from "@/lib/db/schema";
 import { buildProjectStats } from "@/lib/project/buildProjectStats";
 import {
@@ -78,49 +72,105 @@ export function PolygonStats({
 
   return (
     <div className="flex flex-col gap-2">
-      <Card className="border-border/80 py-3 shadow-none">
-        <CardHeader className="space-y-1 px-3 pb-2 pt-0">
-          <CardTitle className="text-sm font-semibold">
-            Terreno principal
+      <Card className="border-border/80 overflow-hidden py-2 shadow-none">
+        <CardHeader className="space-y-0 px-2.5 pb-1.5 pt-0">
+          <CardTitle className="text-[11px] font-semibold tracking-wide uppercase">
+            Métricas
           </CardTitle>
-          <CardDescription className="text-xs">
-            Polígono principal del proyecto
-          </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-2 px-3 pb-0 pt-0 sm:grid-cols-3">
-          <StatBlock label="Área" value={formatAreaDisplay(stats.mainAreaM2)} />
-          <StatBlock
-            label="Perímetro"
-            value={formatPerimeterDisplay(stats.mainPerimeterM)}
-          />
-          <StatBlock
-            label="Vértices"
-            value={String(stats.mainVertexCount)}
-            className="sm:col-span-1"
-          />
+        <CardContent className="space-y-2 px-2.5 pb-1.5 pt-0">
+          <div>
+            <p className="text-muted-foreground mb-1 font-sans text-[10px] font-medium tracking-wide uppercase">
+              Terreno principal
+            </p>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <InlineMetric
+                label="Área"
+                value={formatAreaDisplay(stats.mainAreaM2)}
+              />
+              <DotSep />
+              <InlineMetric
+                label="Perím."
+                value={formatPerimeterDisplay(stats.mainPerimeterM)}
+              />
+              <DotSep />
+              <InlineMetric
+                label="Vért."
+                value={String(stats.mainVertexCount)}
+              />
+            </div>
+            {stats.mainAreaUncertaintyM2 > 0 ? (
+              <p className="text-muted-foreground mt-1.5 text-[10px] leading-snug">
+                Incertidumbre área ≈ ±
+                {Math.round(stats.mainAreaUncertaintyM2)} m² (GPS por vértice).
+              </p>
+            ) : null}
+          </div>
+
+          <div className="border-border/40 border-t pt-2">
+            <p className="text-muted-foreground mb-1 font-sans text-[10px] font-medium tracking-wide uppercase">
+              Resumen proyecto
+            </p>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <InlineMetric
+                label="Libre"
+                value={formatAreaDisplay(stats.freeAreaM2)}
+              />
+              <DotSep />
+              <InlineMetric
+                label="Σ sub"
+                value={formatAreaDisplay(
+                  stats.subRows.length > 0 ? stats.sumSubAreasM2 : null,
+                )}
+              />
+              <DotSep />
+              <InlineMetric
+                label="Vért tot"
+                value={String(stats.totalVertices)}
+              />
+              <DotSep />
+              <InlineMetric label="POIs" value={String(stats.poiCount)} />
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "rounded-md border px-2 py-1.5",
+              stats.subAreasExceedMain
+                ? "border-amber-500/40 bg-amber-500/10"
+                : "border-border/60 bg-muted/15",
+            )}
+          >
+            <p className="text-foreground font-mono text-[11px] leading-snug tabular-nums">
+              <span className="text-muted-foreground font-sans text-[10px] font-normal">
+                Fotos{" "}
+              </span>
+              <span className="font-semibold">{stats.photoCounts.total}</span>
+              <span className="text-muted-foreground font-sans font-normal">
+                {" "}
+                (v {stats.photoCounts.fromVertices} · p{" "}
+                {stats.photoCounts.fromPois} · +{" "}
+                {stats.photoCounts.fromExtras})
+              </span>
+            </p>
+            {stats.subAreasExceedMain ? (
+              <p className="text-amber-900 dark:text-amber-200 mt-1 text-[10px] leading-snug">
+                Σ subáreas &gt; área principal; &quot;libre&quot; en 0 — revisa
+                geometría.
+              </p>
+            ) : null}
+          </div>
         </CardContent>
-        {stats.mainAreaUncertaintyM2 > 0 ? (
-          <p className="text-muted-foreground px-3 pb-2 pt-1 text-[10px] leading-snug">
-            Incertidumbre orientativa del área ≈ ±
-            {Math.round(stats.mainAreaUncertaintyM2)} m² según precisión GPS
-            por vértice.
-          </p>
-        ) : null}
       </Card>
 
       {hasAnyEdgeList ? (
-        <Card className="border-border/80 py-3 shadow-none">
-          <CardHeader className="space-y-1 px-3 pb-2 pt-0">
-            <CardTitle className="text-sm font-semibold">
+        <Card className="border-border/80 py-2 shadow-none">
+          <CardHeader className="space-y-0 px-2.5 pb-1 pt-0">
+            <CardTitle className="text-[11px] font-semibold tracking-wide uppercase">
               Distancia entre puntos
             </CardTitle>
-            <CardDescription className="text-xs">
-              Aristas consecutivas (orden de captura). Distancias geodésicas
-              aproximadas (Turf). En el mapa, las etiquetas de distancia solo se
-              muestran con zoom ≥ {EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM}.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 px-3 pb-1 pt-0">
+          <CardContent className="flex flex-col gap-2 px-2.5 pb-1.5 pt-0">
             {mainEdgeSegments.length > 0 ? (
               <EdgeSegmentBlock title="Terreno principal" segments={mainEdgeSegments} />
             ) : null}
@@ -148,14 +198,13 @@ export function PolygonStats({
       ) : null}
 
       {stats.subRows.length > 0 ? (
-        <Card className="border-border/80 py-3 shadow-none">
-          <CardHeader className="space-y-1 px-3 pb-2 pt-0">
-            <CardTitle className="text-sm font-semibold">Sub-áreas</CardTitle>
-            <CardDescription className="text-xs">
-              Área y perímetro por sub-polígono
-            </CardDescription>
+        <Card className="border-border/80 py-2 shadow-none">
+          <CardHeader className="space-y-0 px-2.5 pb-1 pt-0">
+            <CardTitle className="text-[11px] font-semibold tracking-wide uppercase">
+              Sub-áreas
+            </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2 px-3 pb-1 pt-0">
+          <CardContent className="flex flex-col gap-1.5 px-2.5 pb-1.5 pt-0">
             {stats.subRows.map((row) => (
               <div
                 key={row.polygonLocalId}
@@ -174,21 +223,20 @@ export function PolygonStats({
                     </span>
                   ) : null}
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <StatBlock
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <InlineMetric
                     label="Área"
                     value={formatAreaDisplay(row.areaM2)}
-                    compact
                   />
-                  <StatBlock
+                  <DotSep />
+                  <InlineMetric
                     label="Perím."
                     value={formatPerimeterDisplay(row.perimeterM)}
-                    compact
                   />
-                  <StatBlock
+                  <DotSep />
+                  <InlineMetric
                     label="Vért."
                     value={String(row.vertexCount)}
-                    compact
                   />
                 </div>
               </div>
@@ -197,71 +245,41 @@ export function PolygonStats({
         </Card>
       ) : null}
 
-      <Card className="border-border/80 py-3 shadow-none">
-        <CardHeader className="space-y-1 px-3 pb-2 pt-0">
-          <CardTitle className="text-sm font-semibold">Resumen</CardTitle>
-          <CardDescription className="text-xs">
-            Área libre estimada y conteos del proyecto
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 px-3 pb-0 pt-0 sm:grid-cols-2">
-          <StatBlock
-            label="Área libre (principal − subáreas)"
-            value={formatAreaDisplay(stats.freeAreaM2)}
-            align="left"
-          />
-          <StatBlock
-            label="Suma áreas sub"
-            value={formatAreaDisplay(
-              stats.subRows.length > 0 ? stats.sumSubAreasM2 : null,
-            )}
-            align="left"
-          />
-          <StatBlock
-            label="Vértices (total)"
-            value={String(stats.totalVertices)}
-            align="left"
-          />
-          <StatBlock
-            label="POIs"
-            value={String(stats.poiCount)}
-            align="left"
-          />
-          <div
-            className={cn(
-              "rounded-md border px-2.5 py-2 sm:col-span-2",
-              stats.subAreasExceedMain
-                ? "border-amber-500/40 bg-amber-500/10"
-                : "border-border/60 bg-muted/15",
-            )}
-          >
-            <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
-              Fotos (con imagen)
-            </p>
-            <p className="text-foreground font-mono text-base font-semibold tabular-nums">
-              {stats.photoCounts.total}
-            </p>
-            <p className="text-muted-foreground mt-0.5 font-mono text-[10px] tabular-nums leading-snug">
-              Vértices {stats.photoCounts.fromVertices} · POIs{" "}
-              {stats.photoCounts.fromPois} · Adicionales{" "}
-              {stats.photoCounts.fromExtras}
-            </p>
-            {stats.subAreasExceedMain ? (
-              <p className="text-amber-900 dark:text-amber-200 mt-1.5 text-[10px] leading-snug">
-                La suma de subáreas supera el área del terreno principal; el
-                valor &quot;libre&quot; se muestra en 0 (revisa solapes o
-                geometría).
-              </p>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
-
-      <p className="text-muted-foreground text-[10px] leading-snug">
-        Área, perímetro y distancias entre puntos son estimaciones (Turf sobre
-        lon/lat; no sustituye topografía certificada).
+      <p className="text-muted-foreground px-0.5 text-[9px] leading-snug">
+        Área, perímetro y distancias: estimaciones (Turf); no sustituye
+        topografía certificada.
       </p>
     </div>
+  );
+}
+
+function DotSep() {
+  return (
+    <span
+      className="text-muted-foreground/35 shrink-0 select-none"
+      aria-hidden
+    >
+      ·
+    </span>
+  );
+}
+
+function InlineMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1">
+      <span className="text-muted-foreground shrink-0 font-sans text-[10px] font-normal tracking-tight">
+        {label}
+      </span>
+      <span className="text-foreground font-mono text-xs font-semibold tabular-nums">
+        {value}
+      </span>
+    </span>
   );
 }
 
@@ -292,47 +310,6 @@ function EdgeSegmentBlock({
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function StatBlock({
-  label,
-  value,
-  compact,
-  align = "center",
-  className,
-}: {
-  label: string;
-  value: string;
-  compact?: boolean;
-  align?: "center" | "left";
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "min-w-0",
-        align === "center" ? "text-center" : "text-left",
-        className,
-      )}
-    >
-      <div
-        className={cn(
-          "text-foreground font-mono font-semibold tabular-nums",
-          compact ? "text-xs" : "text-sm",
-        )}
-      >
-        {value}
-      </div>
-      <div
-        className={cn(
-          "text-muted-foreground",
-          compact ? "text-[9px]" : "text-[10px]",
-        )}
-      >
-        {label}
-      </div>
     </div>
   );
 }

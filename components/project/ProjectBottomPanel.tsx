@@ -134,7 +134,7 @@ export function ProjectBottomPanel({
 
       {expanded ? (
         <div className="flex max-h-[min(54vh,480px)] min-h-0 flex-col overflow-hidden px-3 pb-3">
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
             {main ? (
               <PolygonStats
                 main={main}
@@ -148,7 +148,7 @@ export function ProjectBottomPanel({
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                className="min-h-12 flex-1"
+                className="min-h-11 flex-1"
                 disabled={!main}
                 onClick={onCaptureClick}
               >
@@ -157,7 +157,7 @@ export function ProjectBottomPanel({
               <Button
                 type="button"
                 variant="secondary"
-                className="min-h-12 flex-1"
+                className="min-h-11 flex-1"
                 disabled={!canClose}
                 onClick={onClosePolygon}
               >
