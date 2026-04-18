@@ -36,3 +36,14 @@ export async function createVertex(
 export async function deleteVertex(localId: string): Promise<void> {
   await getDb().vertices.delete(localId);
 }
+
+export async function nextOrderIndexForPolygon(
+  polygonLocalId: string,
+): Promise<number> {
+  const list = await getDb()
+    .vertices.where("polygonLocalId")
+    .equals(polygonLocalId)
+    .toArray();
+  if (list.length === 0) return 0;
+  return Math.max(...list.map((v) => v.orderIndex)) + 1;
+}

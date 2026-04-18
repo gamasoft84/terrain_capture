@@ -74,6 +74,8 @@ export interface UseGPSAveragedReturn {
   progress: number;
   readingsCount: number;
   startAveraging: (targetReadings: number, maxDurationMs: number) => void;
+  /** Detiene el promediado sin fijar resultado (p. ej. al cerrar el sheet). */
+  cancelAveraging: () => void;
   averagedReading: GPSReading | null;
 }
 
@@ -206,6 +208,15 @@ export function useGPSAveraged(
     [finalizeSession, positionOptions, stopSession],
   );
 
+  const cancelAveraging = useCallback(() => {
+    if (!sessionRef.current) return;
+    stopSession();
+    setIsAveraging(false);
+    setProgress(0);
+    setReadingsCount(0);
+    setAveragedReading(null);
+  }, [stopSession]);
+
   useEffect(() => () => stopSession(), [stopSession]);
 
   return {
@@ -213,6 +224,7 @@ export function useGPSAveraged(
     progress,
     readingsCount,
     startAveraging,
+    cancelAveraging,
     averagedReading,
   };
 }

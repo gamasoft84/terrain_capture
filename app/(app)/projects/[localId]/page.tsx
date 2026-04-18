@@ -13,6 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CaptureButton } from "@/components/capture/CaptureButton";
+import MapCanvas from "@/components/map/MapCanvas";
 import { getDb } from "@/lib/db/schema";
 
 export default function ProjectDetailPage() {
@@ -28,7 +30,14 @@ export default function ProjectDetailPage() {
       .equals(localId)
       .filter((p) => p.type === "main")
       .first();
-    return { project, main };
+    const vertices =
+      main != null
+        ? await db.vertices
+            .where("polygonLocalId")
+            .equals(main.localId)
+            .sortBy("orderIndex")
+        : [];
+    return { project, main, vertices };
   }, [localId]);
 
   if (data === undefined) {
@@ -62,7 +71,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="relative flex flex-1 flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-foreground text-2xl font-semibold tracking-tight">
@@ -82,15 +91,15 @@ export default function ProjectDetailPage() {
         </Link>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Vista de proyecto</CardTitle>
+          <CardTitle>Mapa</CardTitle>
           <CardDescription>
-            Mapa a pantalla completa, captura de vértices y estadísticas: tarea
-            1.10+.
+            ESRI World Imagery (MapLibre). Estadísticas y captura a pantalla
+            completa: tarea 1.10+.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-muted-foreground space-y-2 text-sm">
+        <CardContent className="text-muted-foreground space-y-3 text-sm">
           <p>
             Polígono principal:{" "}
             <span className="text-foreground font-mono">
@@ -99,10 +108,27 @@ export default function ProjectDetailPage() {
           </p>
           <p>
             Estado polígono:{" "}
-            {data.main?.isClosed ? "Cerrado" : "Abierto (sin cerrar)"}
+            {data.main?.isClosed ? "Cerrado" : "Abierto (sin cerrar)"} ·{" "}
+            {data.vertices.length} vértice
+            {data.vertices.length === 1 ? "" : "s"}
           </p>
+          <MapCanvas
+            className="min-h-[min(55vh,520px)]"
+            vertices={data.vertices}
+            isClosed={data.main?.isClosed ?? false}
+            areaM2={data.main?.areaM2 ?? null}
+            showUserLocation
+          />
         </CardContent>
       </Card>
+
+      {data.main ? (
+        <CaptureButton
+          polygonLocalId={data.main.localId}
+          projectLocalId={data.project.localId}
+          polygonIsClosed={data.main.isClosed}
+        />
+      ) : null}
     </div>
   );
 }
