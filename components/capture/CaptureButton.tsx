@@ -27,6 +27,7 @@ import type { LocalPolygon } from "@/lib/db/schema";
 import { SUB_POLYGON_COLOR_OPTIONS } from "@/lib/constants/subPolygonColors";
 import { POIForm } from "@/components/capture/POIForm";
 import { ProjectPhotoQuickForm } from "@/components/capture/ProjectPhotoQuickForm";
+import { VertexBatchGalleryForm } from "@/components/capture/VertexBatchGalleryForm";
 import { VertexForm } from "@/components/capture/VertexForm";
 
 export interface CaptureButtonProps {
@@ -62,7 +63,8 @@ type CapturePhase =
   | "quick"
   | "avg"
   | "form"
-  | "photoForm";
+  | "photoForm"
+  | "vertexBatch";
 
 type CaptureEntity = "main_vertex" | "sub_vertex" | "poi" | "project_photo";
 
@@ -276,6 +278,8 @@ export function CaptureButton({
         return "Nuevo sub-polígono";
       case "photoForm":
         return "Foto adicional";
+      case "vertexBatch":
+        return "Vértices desde galería";
       case "form":
         return captureEntity === "poi"
           ? "Confirmar POI"
@@ -299,6 +303,8 @@ export function CaptureButton({
         return "Nombre y color para dibujar luego sus vértices en el mapa.";
       case "photoForm":
         return "Sin obligación de GPS. Puedes añadir ubicación si quieres.";
+      case "vertexBatch":
+        return "Varias fotos con GPS en EXIF. Orden de izquierda a derecha: P1, P2…";
       case "avg":
         return "Promediando lecturas con peso 1/precisión².";
       default:
@@ -530,6 +536,17 @@ export function CaptureButton({
                 >
                   Captura precisa
                 </Button>
+                {captureEntity === "main_vertex" ||
+                captureEntity === "sub_vertex" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 w-full text-base"
+                    onClick={() => setPhase("vertexBatch")}
+                  >
+                    Varias fotos (galería)
+                  </Button>
+                ) : null}
               </div>
             ) : null}
 
@@ -607,6 +624,16 @@ export function CaptureButton({
                 projectLocalId={projectLocalId}
                 requestGpsReading={() => geo.requestReading()}
                 onCancel={() => setPhase("entity")}
+                onSaved={onSaved}
+              />
+            ) : null}
+
+            {phase === "vertexBatch" ? (
+              <VertexBatchGalleryForm
+                polygonLocalId={vertexTargetId}
+                projectLocalId={projectLocalId}
+                polygonIsClosed={effectivePolygonIsClosed}
+                onCancel={() => setPhase("menu")}
                 onSaved={onSaved}
               />
             ) : null}
