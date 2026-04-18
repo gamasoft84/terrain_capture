@@ -17,6 +17,13 @@
 
 ---
 
+## Desarrollo local — prueba en iPhone (nota del repo)
+
+- **Importante:** Para ver trazas en la consola del navegador (Safari / inspector remoto) y validar flujos con caché y formularios de forma cercana a producción, **`npm run build` + `npm run start`** ha resultado más fiable en este proyecto que solo **`npm run dev`** en el iPhone (especialmente detrás de túnel Cloudflare `*.trycloudflare.com`).
+- Con **`npm run dev`**, el WebSocket de HMR (`/_next/webpack-hmr`) puede **bloquearse por origen cruzado** entre el host del túnel y `localhost`. En este repo, `next.config.ts` incluye **`allowedDevOrigins: ["*.trycloudflare.com"]`** para Cloudflare Quick Tunnels; reinicia `npm run dev` tras cambiar el túnel si añades otro dominio (ngrok, etc.). Aun así, para comprobar en dispositivo lo más parecido a producción, **`build` + `start`** sigue siendo la referencia.
+
+---
+
 # 🎯 PROMPT MAESTRO (pegar al inicio del proyecto)
 
 ```

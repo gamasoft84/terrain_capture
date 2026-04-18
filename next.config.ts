@@ -15,6 +15,10 @@ const projectRoot = path.dirname(
 );
 
 const nextConfig: NextConfig = {
+  // Permite HMR y recursos `/_next/*` cuando entras por túnel (p. ej. cloudflared → *.trycloudflare.com).
+  // Sin esto, Next bloquea por origen cruzado respecto a localhost:3000.
+  // Añade aquí otros hosts de túnel si usas ngrok, localtunnel, etc.
+  allowedDevOrigins: ["*.trycloudflare.com"],
   turbopack: {
     root: projectRoot,
   },
