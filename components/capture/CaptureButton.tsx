@@ -33,7 +33,7 @@ function geoErrorMessage(err: GeolocationPositionError): string {
     case 2:
       return "Posición no disponible.";
     case 3:
-      return "Tiempo de espera agotado.";
+      return "Tiempo de espera agotado. En Mac/interior el GPS por red puede tardar: activa ubicación precisa en Ajustes o prueba al aire libre / iPhone.";
     default:
       return err.message || "Error de GPS.";
   }
@@ -61,6 +61,12 @@ export function CaptureButton({
     enableHighAccuracy: true,
     maximumAge: 5_000,
     timeout: 20_000,
+    // Lectura puntual: en escritorio Wi‑Fi/cell responde mejor sin high accuracy forzado
+    requestReadingOverrides: {
+      enableHighAccuracy: false,
+      maximumAge: 120_000,
+      timeout: 90_000,
+    },
   });
 
   const averaged = useGPSAveraged({

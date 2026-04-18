@@ -19,7 +19,7 @@ function errorMessage(err: GeolocationPositionError): string {
     case 2:
       return "Posición no disponible";
     case 3:
-      return "Tiempo de espera agotado";
+      return "Tiempo de espera agotado (en Mac prueba con Wi‑Fi y ubicación activa).";
     default:
       return err.message || "Error de geolocalización";
   }
@@ -32,6 +32,11 @@ export default function CapturePage() {
     enableHighAccuracy: true,
     maximumAge: 5_000,
     timeout: 20_000,
+    requestReadingOverrides: {
+      enableHighAccuracy: false,
+      maximumAge: 120_000,
+      timeout: 90_000,
+    },
   });
 
   const averaged = useGPSAveraged({

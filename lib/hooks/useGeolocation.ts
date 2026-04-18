@@ -24,6 +24,13 @@ export interface UseGeolocationOptions {
   timeout?: number;
   /** `watchPosition` continuo vs solo lecturas bajo demanda */
   watch?: boolean;
+  /**
+   * Solo aplica a `requestReading` / `getCurrentPosition`.
+   * En escritorio conviene `enableHighAccuracy: false` y `maximumAge` mayor (Wi‑Fi / caché).
+   */
+  requestReadingOverrides?: Partial<
+    Pick<PositionOptions, "enableHighAccuracy" | "maximumAge" | "timeout">
+  >;
 }
 
 export interface UseGeolocationReturn {
@@ -78,6 +85,13 @@ function mergePositionOptions(
   };
 }
 
+function mergeRequestReadingOptions(opts: UseGeolocationOptions): PositionOptions {
+  return {
+    ...mergePositionOptions(opts),
+    ...opts.requestReadingOverrides,
+  };
+}
+
 export function useGeolocation(
   options: UseGeolocationOptions = {},
 ): UseGeolocationReturn {
@@ -87,8 +101,8 @@ export function useGeolocation(
     [options.enableHighAccuracy, options.maximumAge, options.timeout],
   );
 
-  const positionOptionsRef = useRef(positionOptions);
-  positionOptionsRef.current = positionOptions;
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const [reading, setReading] = useState<GPSReading | null>(null);
   const [error, setError] = useState<GeolocationPositionError | null>(null);
@@ -108,6 +122,7 @@ export function useGeolocation(
       }
 
       setIsLoading(true);
+      const readOpts = mergeRequestReadingOptions(optionsRef.current);
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const next = positionToReading(position);
@@ -121,7 +136,7 @@ export function useGeolocation(
           setIsLoading(false);
           reject(err);
         },
-        positionOptionsRef.current,
+        readOpts,
       );
     });
   }, []);
