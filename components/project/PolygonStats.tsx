@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -11,8 +11,11 @@ import {
 import type { LocalPOI, LocalPolygon, LocalProjectPhoto, LocalVertex } from "@/lib/db/schema";
 import { buildProjectStats } from "@/lib/project/buildProjectStats";
 import {
+  consecutiveVertexEdgeSegments,
   formatAreaDisplay,
+  formatDistanceMeters,
   formatPerimeterDisplay,
+  type PolygonEdgeSegment,
 } from "@/lib/geo/calculations";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +51,30 @@ export function PolygonStats({
     [main, mainVertices, subLayers, pois, projectPhotos],
   );
 
+  const mainEdgeSegments = useMemo(
+    () => consecutiveVertexEdgeSegments(mainVertices, main.isClosed, "P"),
+    [mainVertices, main.isClosed],
+  );
+
+  const subEdgeBlocks = useMemo(
+    () =>
+      subLayers.map(({ polygon, vertices }) => ({
+        polygonLocalId: polygon.localId,
+        name: polygon.name,
+        color: polygon.color,
+        segments: consecutiveVertexEdgeSegments(
+          vertices,
+          polygon.isClosed,
+          "S",
+        ),
+      })),
+    [subLayers],
+  );
+
+  const hasAnyEdgeList =
+    mainEdgeSegments.length > 0 ||
+    subEdgeBlocks.some((b) => b.segments.length > 0);
+
   return (
     <div className="flex flex-col gap-2">
       <Card className="border-border/80 py-3 shadow-none">
@@ -79,6 +106,44 @@ export function PolygonStats({
           </p>
         ) : null}
       </Card>
+
+      {hasAnyEdgeList ? (
+        <Card className="border-border/80 py-3 shadow-none">
+          <CardHeader className="space-y-1 px-3 pb-2 pt-0">
+            <CardTitle className="text-sm font-semibold">
+              Distancia entre puntos
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Aristas consecutivas (orden de captura). Distancias geodésicas
+              aproximadas (Turf).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 px-3 pb-1 pt-0">
+            {mainEdgeSegments.length > 0 ? (
+              <EdgeSegmentBlock title="Terreno principal" segments={mainEdgeSegments} />
+            ) : null}
+            {subEdgeBlocks.map(
+              (block) =>
+                block.segments.length > 0 && (
+                  <EdgeSegmentBlock
+                    key={block.polygonLocalId}
+                    title={
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className="size-2 shrink-0 rounded-full border border-white/20 shadow-sm"
+                          style={{ backgroundColor: block.color }}
+                          aria-hidden
+                        />
+                        <span>{block.name}</span>
+                      </span>
+                    }
+                    segments={block.segments}
+                  />
+                ),
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {stats.subRows.length > 0 ? (
         <Card className="border-border/80 py-3 shadow-none">
@@ -191,9 +256,40 @@ export function PolygonStats({
       </Card>
 
       <p className="text-muted-foreground text-[10px] leading-snug">
-        Área y perímetro son estimaciones (Turf sobre lon/lat; no sustituye
-        topografía certificada).
+        Área, perímetro y distancias entre puntos son estimaciones (Turf sobre
+        lon/lat; no sustituye topografía certificada).
       </p>
+    </div>
+  );
+}
+
+function EdgeSegmentBlock({
+  title,
+  segments,
+}: {
+  title: ReactNode;
+  segments: PolygonEdgeSegment[];
+}) {
+  return (
+    <div className="border-border/50 rounded-md border bg-muted/10 px-2 py-2">
+      <p className="text-muted-foreground mb-1.5 text-[10px] font-semibold uppercase tracking-wide">
+        {title}
+      </p>
+      <ul className="max-h-36 space-y-1 overflow-y-auto overscroll-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
+        {segments.map((s, i) => (
+          <li
+            key={`${s.fromLabel}-${s.toLabel}-${i}`}
+            className="text-foreground flex items-baseline justify-between gap-2 font-mono text-[11px] tabular-nums"
+          >
+            <span className="min-w-0 shrink truncate">
+              {s.fromLabel} → {s.toLabel}
+            </span>
+            <span className="text-muted-foreground shrink-0">
+              {formatDistanceMeters(s.meters)}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

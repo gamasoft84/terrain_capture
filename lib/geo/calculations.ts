@@ -101,6 +101,63 @@ export function formatPerimeterDisplay(
   return `${meters.toFixed(1)} m`;
 }
 
+/** Distancia geodésica entre dos vértices (m), vía `turf.distance`. */
+function segmentDistanceMeters(a: GeoVertex, b: GeoVertex): number {
+  const km = turf.distance(
+    turf.point([a.longitude, a.latitude]),
+    turf.point([b.longitude, b.latitude]),
+    { units: "kilometers" },
+  );
+  return km * 1000;
+}
+
+function sortedGeoVertices(vertices: GeoVertex[]): GeoVertex[] {
+  return [...vertices].sort((a, b) => a.orderIndex - b.orderIndex);
+}
+
+export type PolygonEdgeSegment = {
+  fromLabel: string;
+  toLabel: string;
+  meters: number;
+};
+
+/**
+ * Longitud de cada arista entre vértices consecutivos (`orderIndex`) y, si el
+ * polígono está cerrado con ≥3 vértices, la arista de cierre (último → primero).
+ */
+export function consecutiveVertexEdgeSegments(
+  vertices: GeoVertex[],
+  isClosed: boolean,
+  labelPrefix: string,
+): PolygonEdgeSegment[] {
+  const sorted = sortedGeoVertices(vertices);
+  const n = sorted.length;
+  if (n < 2) return [];
+  const out: PolygonEdgeSegment[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    out.push({
+      fromLabel: `${labelPrefix}${i + 1}`,
+      toLabel: `${labelPrefix}${i + 2}`,
+      meters: segmentDistanceMeters(sorted[i]!, sorted[i + 1]!),
+    });
+  }
+  if (isClosed && n >= 3) {
+    out.push({
+      fromLabel: `${labelPrefix}${n}`,
+      toLabel: `${labelPrefix}1`,
+      meters: segmentDistanceMeters(sorted[n - 1]!, sorted[0]!),
+    });
+  }
+  return out;
+}
+
+/** Formato legible para tramos (metros o km si ≥ 1000 m). */
+export function formatDistanceMeters(m: number | null | undefined): string {
+  if (m == null || !Number.isFinite(m) || m < 0) return "—";
+  if (m < 1000) return `${m.toFixed(1)} m`;
+  return `${(m / 1000).toFixed(2)} km`;
+}
+
 /**
  * Cota orientativa de incertidumbre de área (m²) usando la precisión horizontal
  * declarada por vértice (`gpsAccuracyM`, o 5 m si falta). Heurística simple, no
