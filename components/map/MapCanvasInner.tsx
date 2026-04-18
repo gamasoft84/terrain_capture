@@ -127,28 +127,7 @@ export default function MapCanvasInner({
     initialZoom,
     showUserLocation,
   });
-
-  useLayoutEffect(() => {
-    onClickRef.current = onMapClick;
-    dataRef.current = {
-      vertices,
-      isClosed,
-      areaM2,
-      allowVertexDrag,
-      vertexDragTarget,
-    };
-    mountOptsRef.current = { initialCenter, initialZoom, showUserLocation };
-  }, [
-    onMapClick,
-    vertices,
-    isClosed,
-    areaM2,
-    allowVertexDrag,
-    vertexDragTarget,
-    initialCenter,
-    initialZoom,
-    showUserLocation,
-  ]);
+  const prevAllowVertexDragRef = useRef(allowVertexDrag);
 
   const syncMap = useCallback((map: maplibregl.Map) => {
     const {
@@ -248,6 +227,39 @@ export default function MapCanvasInner({
       didFitForCurrentVertexSetRef.current = true;
     }
   }, []);
+
+  useLayoutEffect(() => {
+    onClickRef.current = onMapClick;
+    dataRef.current = {
+      vertices,
+      isClosed,
+      areaM2,
+      allowVertexDrag,
+      vertexDragTarget,
+    };
+    mountOptsRef.current = { initialCenter, initialZoom, showUserLocation };
+
+    const prev = prevAllowVertexDragRef.current;
+    const next = allowVertexDrag;
+    const map = mapRef.current;
+    if (prev !== next && map && styleReadyRef.current) {
+      vertexCountForFitRef.current = -1;
+      didFitForCurrentVertexSetRef.current = false;
+      syncMap(map);
+    }
+    prevAllowVertexDragRef.current = next;
+  }, [
+    onMapClick,
+    vertices,
+    isClosed,
+    areaM2,
+    allowVertexDrag,
+    vertexDragTarget,
+    initialCenter,
+    initialZoom,
+    showUserLocation,
+    syncMap,
+  ]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -362,14 +374,7 @@ export default function MapCanvasInner({
     const map = mapRef.current;
     if (!map || !styleReadyRef.current) return;
     syncMap(map);
-  }, [
-    vertices,
-    isClosed,
-    areaM2,
-    allowVertexDrag,
-    vertexDragTarget,
-    syncMap,
-  ]);
+  }, [vertices, isClosed, areaM2, vertexDragTarget, syncMap]);
 
   return (
     <div
