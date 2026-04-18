@@ -26,7 +26,13 @@ import {
   updateVertex,
 } from "@/lib/db/vertices";
 import { getDb } from "@/lib/db/schema";
-import type { LocalVertex } from "@/lib/db/schema";
+import type { LocalPolygon, LocalProject, LocalVertex } from "@/lib/db/schema";
+
+type ProjectDetailData = {
+  project: LocalProject | undefined;
+  main: LocalPolygon | undefined;
+  vertices: LocalVertex[];
+};
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -41,24 +47,33 @@ export default function ProjectDetailPage() {
   const [selectedDisplayIndex, setSelectedDisplayIndex] = useState(1);
   const [closePolygonBusy, setClosePolygonBusy] = useState(false);
 
-  const data = useLiveQuery(async () => {
-    if (typeof window === "undefined" || !localId) return undefined;
-    const db = getDb();
-    const project = await db.projects.get(localId);
-    const main = await db.polygons
-      .where("projectLocalId")
-      .equals(localId)
-      .filter((p) => p.type === "main")
-      .first();
-    const vertices =
-      main != null
-        ? await db.vertices
+  const data = useLiveQuery(
+    async (): Promise<ProjectDetailData | undefined> => {
+      try {
+        if (typeof window === "undefined" || !localId) return undefined;
+        const db = getDb();
+        const project = await db.projects.get(localId);
+        const main = await db.polygons
+          .where("projectLocalId")
+          .equals(localId)
+          .filter((p) => p.type === "main")
+          .first();
+        let vertices: LocalVertex[] = [];
+        if (main != null) {
+          vertices = await db.vertices
             .where("polygonLocalId")
             .equals(main.localId)
-            .sortBy("orderIndex")
-        : [];
-    return { project, main, vertices };
-  }, [localId]);
+            .toArray();
+          vertices.sort((a, b) => a.orderIndex - b.orderIndex);
+        }
+        return { project, main, vertices };
+      } catch (e) {
+        console.error("[TerrainCapture] proyecto Dexie", e);
+        return { project: undefined, main: undefined, vertices: [] };
+      }
+    },
+    [localId],
+  );
 
   const handleClosePolygon = useCallback(async () => {
     if (!data?.main || data.vertices.length < 3) return;

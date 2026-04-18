@@ -15,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getDb } from "@/lib/db/schema";
 import { formatAreaDisplay } from "@/lib/geo/calculations";
 
@@ -29,42 +28,47 @@ type Row = {
 };
 
 export default function DashboardPage() {
-  const rows = useLiveQuery(async (): Promise<Row[] | undefined> => {
-    if (typeof window === "undefined") return undefined;
-    const db = getDb();
-    const projects = await db.projects.orderBy("updatedAt").reverse().toArray();
-    const result: Row[] = [];
-    for (const p of projects) {
-      const main = await db.polygons
-        .where("projectLocalId")
-        .equals(p.localId)
-        .filter((poly) => poly.type === "main")
-        .first();
-      let areaLabel: string | null = null;
-      if (main?.isClosed && main.areaM2 != null) {
-        areaLabel = formatAreaDisplay(main.areaM2);
+  /** Valor por defecto: evita skeleton infinito si la query tarda o falla (p. ej. Safari + IndexedDB). */
+  const rows = useLiveQuery(
+    async (): Promise<Row[]> => {
+      try {
+        if (typeof window === "undefined") return [];
+        const db = getDb();
+        const projects = await db.projects.toArray();
+        projects.sort(
+          (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+        );
+        const result: Row[] = [];
+        for (const p of projects) {
+          const main = await db.polygons
+            .where("projectLocalId")
+            .equals(p.localId)
+            .filter((poly) => poly.type === "main")
+            .first();
+          let areaLabel: string | null = null;
+          if (main?.isClosed && main.areaM2 != null) {
+            areaLabel = formatAreaDisplay(main.areaM2);
+          }
+          result.push({
+            projectName: p.name,
+            projectLocalId: p.localId,
+            locationLabel: p.locationLabel,
+            updatedAt: p.updatedAt,
+            status: p.status,
+            areaLabel,
+          });
+        }
+        return result;
+      } catch (e) {
+        console.error("[TerrainCapture] dashboard Dexie", e);
+        return [];
       }
-      result.push({
-        projectName: p.name,
-        projectLocalId: p.localId,
-        locationLabel: p.locationLabel,
-        updatedAt: p.updatedAt,
-        status: p.status,
-        areaLabel,
-      });
-    }
-    return result;
-  }, []);
+    },
+    [],
+    [],
+  );
 
-  if (rows === undefined) {
-    return (
-      <div className="flex flex-1 flex-col gap-3">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-28 w-full" />
-        <Skeleton className="h-28 w-full" />
-      </div>
-    );
-  }
+  const safeRows = rows ?? [];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -77,7 +81,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {rows && rows.length === 0 ? (
+      {safeRows.length === 0 ? (
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle>Sin proyectos</CardTitle>
@@ -88,7 +92,7 @@ export default function DashboardPage() {
         </Card>
       ) : null}
 
-      {rows?.map((row) => (
+      {safeRows.map((row) => (
         <Link key={row.projectLocalId} href={`/projects/${row.projectLocalId}`}>
           <Card className="border-border bg-card hover:border-primary/50 transition-colors">
             <CardHeader className="pb-2">

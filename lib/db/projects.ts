@@ -3,10 +3,9 @@ import { getDb } from "@/lib/db/schema";
 import type { LocalProject } from "@/lib/db/schema";
 
 export async function listProjects(): Promise<LocalProject[]> {
-  return getDb()
-    .projects.orderBy("updatedAt")
-    .reverse()
-    .toArray();
+  const rows = await getDb().projects.toArray();
+  rows.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  return rows;
 }
 
 export async function getProject(
