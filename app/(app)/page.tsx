@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDb } from "@/lib/db/schema";
+import { formatAreaDisplay } from "@/lib/geo/calculations";
 
 type Row = {
   projectName: string;
@@ -41,10 +42,7 @@ export default function DashboardPage() {
         .first();
       let areaLabel: string | null = null;
       if (main?.isClosed && main.areaM2 != null) {
-        areaLabel =
-          main.areaM2 >= 10_000
-            ? `${(main.areaM2 / 10_000).toFixed(2)} ha`
-            : `${main.areaM2.toFixed(1)} m²`;
+        areaLabel = formatAreaDisplay(main.areaM2);
       }
       result.push({
         projectName: p.name,

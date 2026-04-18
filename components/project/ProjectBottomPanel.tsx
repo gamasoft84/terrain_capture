@@ -5,12 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LocalPolygon, LocalVertex } from "@/lib/db/schema";
-
-function formatAreaLabel(areaM2: number | null | undefined): string {
-  if (areaM2 == null || !Number.isFinite(areaM2)) return "—";
-  if (areaM2 >= 10_000) return `${(areaM2 / 10_000).toFixed(2)} ha`;
-  return `${areaM2.toFixed(1)} m²`;
-}
+import {
+  estimateAreaError,
+  formatAreaDisplay,
+} from "@/lib/geo/calculations";
 
 function VertexStripThumb({
   vertex: v,
@@ -75,7 +73,11 @@ export function ProjectBottomPanel({
 }: ProjectBottomPanelProps) {
   const [expanded, setExpanded] = useState(true);
 
-  const areaLabel = formatAreaLabel(main?.areaM2);
+  const areaLabel = formatAreaDisplay(main?.areaM2);
+  const areaUncertaintyM2 = useMemo(() => {
+    if (!main?.isClosed || vertices.length < 3) return 0;
+    return estimateAreaError(vertices);
+  }, [main?.isClosed, vertices]);
   const perimeterLabel =
     main?.perimeterM != null && Number.isFinite(main.perimeterM)
       ? `${main.perimeterM.toFixed(1)} m`
@@ -159,7 +161,16 @@ export function ProjectBottomPanel({
           </div>
 
           <p className="text-muted-foreground text-[10px] leading-snug">
-            Área y perímetro son estimaciones (turf sobre coordenadas GPS).
+            Área y perímetro son estimaciones (Turf sobre lon/lat; no sustituye
+            topografía certificada).
+            {areaUncertaintyM2 > 0 ? (
+              <>
+                {" "}
+                Incertidumbre orientativa del área ≈ ±
+                {Math.round(areaUncertaintyM2)} m² según precisión GPS por
+                vértice.
+              </>
+            ) : null}
           </p>
 
           <div className="min-h-0 flex-1">

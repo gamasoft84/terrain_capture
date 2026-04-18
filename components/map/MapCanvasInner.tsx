@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import type { Feature, FeatureCollection, Position } from "geojson";
-import * as turf from "@turf/turf";
 import { cn } from "@/lib/utils";
 import type { LocalVertex } from "@/lib/db/schema";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import { updateVertex } from "@/lib/db/vertices";
+import { calculateCentroid, formatAreaDisplay } from "@/lib/geo/calculations";
 
 const ESRI_TILE =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -39,11 +39,6 @@ export interface MapCanvasProps {
 
 function sortedVertices(vertices: LocalVertex[]): LocalVertex[] {
   return [...vertices].sort((a, b) => a.orderIndex - b.orderIndex);
-}
-
-function formatAreaLabel(areaM2: number): string {
-  if (areaM2 >= 10_000) return `${(areaM2 / 10_000).toFixed(2)} ha`;
-  return `${areaM2.toFixed(1)} m²`;
 }
 
 function buildFeatureCollection(
@@ -191,11 +186,8 @@ export default function MapCanvasInner({
     areaMarkerRef.current = null;
 
     if (closed && coords.length >= 3 && area != null && Number.isFinite(area)) {
-      const ring = [...coords, coords[0]!];
-      const poly = turf.polygon([ring]);
-      const c = turf.centroid(poly);
-      const [lng, lat] = c.geometry.coordinates;
-      const label = createAreaLabelEl(formatAreaLabel(area));
+      const [lng, lat] = calculateCentroid(sorted);
+      const label = createAreaLabelEl(formatAreaDisplay(area));
       areaMarkerRef.current = new maplibregl.Marker({ element: label })
         .setLngLat([lng, lat])
         .addTo(map);

@@ -1,8 +1,5 @@
 import { getDb } from "@/lib/db/schema";
-import {
-  calculatePolygonAreaM2,
-  calculatePolylinePerimeterM,
-} from "@/lib/geo/calculations";
+import { calculateArea, calculatePerimeter } from "@/lib/geo/calculations";
 import { listVerticesByPolygon } from "@/lib/db/vertices";
 
 /** Recalcula área (solo si cerrado y ≥3 vértices) y perímetro del polígono en Dexie. */
@@ -18,12 +15,12 @@ export async function refreshPolygonMetricsFromVertices(
       p.updatedAt = new Date();
       p.syncStatus = "pending";
       if (verts.length >= 2) {
-        p.perimeterM = calculatePolylinePerimeterM(verts, isClosed);
+        p.perimeterM = calculatePerimeter(verts, isClosed);
       } else {
         delete p.perimeterM;
       }
       if (isClosed && verts.length >= 3) {
-        p.areaM2 = calculatePolygonAreaM2(verts);
+        p.areaM2 = calculateArea(verts);
       } else {
         delete p.areaM2;
       }
