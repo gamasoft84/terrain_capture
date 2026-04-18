@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,6 +20,16 @@ type BatchItem = {
   previewUrl: string;
   exifGps: ExifGpsPosition | null;
 };
+
+const DND_MIME = "application/x-terraincapture-batch-index";
+
+function reorderItems<T>(list: T[], fromIndex: number, toIndex: number): T[] {
+  if (fromIndex === toIndex) return list;
+  const next = [...list];
+  const [removed] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, removed!);
+  return next;
+}
 
 async function uploadVertexPhotoInBackground(
   projectLocalId: string,
@@ -67,6 +77,8 @@ export function VertexBatchGalleryForm({
   const [reading, setReading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragFromIndex, setDragFromIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const itemsRef = useRef<BatchItem[]>([]);
   itemsRef.current = items;
@@ -145,6 +157,63 @@ export function VertexBatchGalleryForm({
     });
   }, [revokeItem]);
 
+  const clearDragUi = useCallback(() => {
+    setDragFromIndex(null);
+    setDragOverIndex(null);
+  }, []);
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, index: number) => {
+      if (submitting) return;
+      const s = String(index);
+      e.dataTransfer.setData(DND_MIME, s);
+      e.dataTransfer.setData("text/plain", s);
+      e.dataTransfer.effectAllowed = "move";
+      setDragFromIndex(index);
+      setDragOverIndex(null);
+    },
+    [submitting],
+  );
+
+  const handleDragEnd = useCallback(() => {
+    clearDragUi();
+  }, [clearDragUi]);
+
+  const handleDragOverCard = useCallback(
+    (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (dragFromIndex != null && dragFromIndex !== index) {
+        setDragOverIndex(index);
+      }
+    },
+    [dragFromIndex],
+  );
+
+  const handleDragLeaveCard = useCallback(
+    (e: React.DragEvent, index: number) => {
+      const cur = e.currentTarget;
+      const rel = e.relatedTarget as Node | null;
+      if (rel && cur.contains(rel)) return;
+      setDragOverIndex((v) => (v === index ? null : v));
+    },
+    [],
+  );
+
+  const handleDropOnCard = useCallback(
+    (e: React.DragEvent, dropIndex: number) => {
+      e.preventDefault();
+      const raw =
+        e.dataTransfer.getData(DND_MIME) ||
+        e.dataTransfer.getData("text/plain");
+      const fromIndex = parseInt(raw, 10);
+      clearDragUi();
+      if (!Number.isFinite(fromIndex) || fromIndex === dropIndex) return;
+      setItems((prev) => reorderItems(prev, fromIndex, dropIndex));
+    },
+    [clearDragUi],
+  );
+
   const handleSave = useCallback(async () => {
     setError(null);
     if (items.length === 0) {
@@ -216,8 +285,10 @@ export function VertexBatchGalleryForm({
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-xs">
         Elige varias fotos con ubicación en EXIF. La primera a la izquierda será
-        P1, la siguiente P2, etc. Si al guardar hay más de tres vértices en
-        total en este polígono, se cerrará automáticamente.
+        P1, la siguiente P2, etc. Puedes reordenar con las flechas o arrastrando
+        desde el icono ⋮⋮ (en iPhone suele ir mejor con las flechas). Si al
+        guardar hay más de tres vértices en total en este polígono, se cerrará
+        automáticamente.
       </p>
 
       <input
@@ -254,11 +325,34 @@ export function VertexBatchGalleryForm({
             {items.map((it, idx) => (
               <div
                 key={it.id}
-                className="border-border flex w-[5.75rem] shrink-0 flex-col gap-1 rounded-lg border p-1.5"
+                onDragOver={(e) => handleDragOverCard(e, idx)}
+                onDragLeave={(e) => handleDragLeaveCard(e, idx)}
+                onDrop={(e) => handleDropOnCard(e, idx)}
+                className={cn(
+                  "border-border flex w-[5.75rem] shrink-0 flex-col gap-1 rounded-lg border p-1.5 transition-[opacity,box-shadow]",
+                  dragFromIndex === idx && "opacity-50",
+                  dragOverIndex === idx &&
+                    dragFromIndex !== idx &&
+                    "ring-primary ring-2 ring-offset-1 ring-offset-background",
+                )}
               >
                 <span className="bg-muted text-center font-mono text-[10px] font-bold">
                   P{idx + 1}
                 </span>
+                <div
+                  draggable={!submitting && items.length > 1}
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground flex cursor-grab touch-none items-center justify-center rounded-md border py-0.5 active:cursor-grabbing",
+                    (submitting || items.length <= 1) &&
+                      "cursor-not-allowed opacity-40",
+                  )}
+                  aria-label="Arrastrar para reordenar"
+                  title="Arrastrar para reordenar"
+                >
+                  <GripVertical className="size-4" aria-hidden />
+                </div>
                 <div className="border-border aspect-square w-full overflow-hidden rounded-md border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
