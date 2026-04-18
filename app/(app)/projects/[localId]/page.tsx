@@ -313,9 +313,9 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col">
-      <div className="fixed inset-x-0 top-14 bottom-16 z-10">
+      <div className="fixed inset-x-0 top-14 bottom-16 z-10 flex flex-col">
         <MapCanvas
-          className="h-full w-full min-h-0"
+          className="min-h-0 w-full flex-1 basis-0"
           vertices={data.vertices}
           isClosed={data.main.isClosed}
           areaM2={data.main.areaM2 ?? null}

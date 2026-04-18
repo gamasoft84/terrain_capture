@@ -1,5 +1,5 @@
 import * as turf from "@turf/turf";
-import type { Feature, Polygon } from "geojson";
+import type { Feature, Point, Polygon } from "geojson";
 import type { LocalVertex } from "@/lib/db/schema";
 
 /**
@@ -115,6 +115,43 @@ function sortedGeoVertices(vertices: GeoVertex[]): GeoVertex[] {
   return [...vertices].sort((a, b) => a.orderIndex - b.orderIndex);
 }
 
+function consecutiveVertexPairs(
+  vertices: GeoVertex[],
+  isClosed: boolean,
+): { a: GeoVertex; b: GeoVertex }[] {
+  const sorted = sortedGeoVertices(vertices);
+  const n = sorted.length;
+  if (n < 2) return [];
+  const pairs: { a: GeoVertex; b: GeoVertex }[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    pairs.push({ a: sorted[i]!, b: sorted[i + 1]! });
+  }
+  if (isClosed && n >= 3) {
+    pairs.push({ a: sorted[n - 1]!, b: sorted[0]! });
+  }
+  return pairs;
+}
+
+/** Punto medio geodésico de cada arista + texto de distancia (para etiquetas en mapa). */
+export function edgeDistanceLabelFeatures(
+  vertices: GeoVertex[],
+  isClosed: boolean,
+): Feature<Point>[] {
+  const pairs = consecutiveVertexPairs(vertices, isClosed);
+  return pairs.map(({ a, b }) => {
+    const mid = turf.midpoint(
+      turf.point([a.longitude, a.latitude]),
+      turf.point([b.longitude, b.latitude]),
+    );
+    const meters = segmentDistanceMeters(a, b);
+    return {
+      type: "Feature",
+      properties: { label: formatDistanceMeters(meters) },
+      geometry: mid.geometry as Point,
+    };
+  });
+}
+
 export type PolygonEdgeSegment = {
   fromLabel: string;
   toLabel: string;
@@ -132,24 +169,30 @@ export function consecutiveVertexEdgeSegments(
 ): PolygonEdgeSegment[] {
   const sorted = sortedGeoVertices(vertices);
   const n = sorted.length;
-  if (n < 2) return [];
-  const out: PolygonEdgeSegment[] = [];
-  for (let i = 0; i < n - 1; i++) {
-    out.push({
-      fromLabel: `${labelPrefix}${i + 1}`,
-      toLabel: `${labelPrefix}${i + 2}`,
-      meters: segmentDistanceMeters(sorted[i]!, sorted[i + 1]!),
-    });
-  }
-  if (isClosed && n >= 3) {
-    out.push({
-      fromLabel: `${labelPrefix}${n}`,
-      toLabel: `${labelPrefix}1`,
-      meters: segmentDistanceMeters(sorted[n - 1]!, sorted[0]!),
-    });
-  }
-  return out;
+  const pairs = consecutiveVertexPairs(vertices, isClosed);
+  return pairs.map((pair, i) => {
+    let fromLabel: string;
+    let toLabel: string;
+    if (i < n - 1) {
+      fromLabel = `${labelPrefix}${i + 1}`;
+      toLabel = `${labelPrefix}${i + 2}`;
+    } else {
+      fromLabel = `${labelPrefix}${n}`;
+      toLabel = `${labelPrefix}1`;
+    }
+    return {
+      fromLabel,
+      toLabel,
+      meters: segmentDistanceMeters(pair.a, pair.b),
+    };
+  });
 }
+
+/**
+ * Zoom mínimo del mapa (nivel MapLibre) para mostrar las etiquetas de distancia
+ * entre vértices sobre la imagen; por debajo se ocultan para no saturar la vista.
+ */
+export const EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM = 20;
 
 /** Formato legible para tramos (metros o km si ≥ 1000 m). */
 export function formatDistanceMeters(m: number | null | undefined): string {

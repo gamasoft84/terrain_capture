@@ -12,6 +12,7 @@ import type { LocalPOI, LocalPolygon, LocalProjectPhoto, LocalVertex } from "@/l
 import { buildProjectStats } from "@/lib/project/buildProjectStats";
 import {
   consecutiveVertexEdgeSegments,
+  EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM,
   formatAreaDisplay,
   formatDistanceMeters,
   formatPerimeterDisplay,
@@ -115,7 +116,8 @@ export function PolygonStats({
             </CardTitle>
             <CardDescription className="text-xs">
               Aristas consecutivas (orden de captura). Distancias geodésicas
-              aproximadas (Turf).
+              aproximadas (Turf). En el mapa, las etiquetas de distancia solo se
+              muestran con zoom ≥ {EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM}.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 px-3 pb-1 pt-0">

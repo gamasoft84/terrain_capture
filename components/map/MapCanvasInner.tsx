@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import type {
   Feature,
@@ -15,7 +15,12 @@ import type { LocalPOI, LocalPolygon, LocalVertex } from "@/lib/db/schema";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import { updatePOI } from "@/lib/db/pois";
 import { updateVertex } from "@/lib/db/vertices";
-import { calculateCentroid, formatAreaDisplay } from "@/lib/geo/calculations";
+import {
+  calculateCentroid,
+  EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM,
+  edgeDistanceLabelFeatures,
+  formatAreaDisplay,
+} from "@/lib/geo/calculations";
 
 const ESRI_TILE =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -201,6 +206,31 @@ function createAreaLabelEl(text: string): HTMLDivElement {
   return el;
 }
 
+function applyEdgeDistanceMarkerVisibility(
+  markers: maplibregl.Marker[],
+  zoom: number,
+) {
+  const show = zoom >= EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM;
+  for (const m of markers) {
+    m.getElement().style.display = show ? "" : "none";
+  }
+}
+
+function createEdgeDistanceLabelEl(
+  text: string,
+  variant: "main" | "sub",
+): HTMLDivElement {
+  const el = document.createElement("div");
+  el.className = cn(
+    "pointer-events-none max-w-[5rem] select-none truncate rounded px-1 py-0.5 text-center font-mono text-[9px] font-semibold leading-tight text-white shadow-md ring-1",
+    variant === "main"
+      ? "bg-black/60 ring-white/25"
+      : "bg-amber-950/80 ring-amber-200/35",
+  );
+  el.textContent = text;
+  return el;
+}
+
 function createPoiMarkerEl(
   label: string,
   selected: boolean,
@@ -257,10 +287,13 @@ export default function MapCanvasInner({
   allowVertexDrag = false,
   resolveVertexDragTarget,
 }: MapCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const [mapZoomDisplay, setMapZoomDisplay] = useState<number | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const poiMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const edgeDistanceMarkersRef = useRef<maplibregl.Marker[]>([]);
   const areaMarkerRef = useRef<maplibregl.Marker | null>(null);
   const styleReadyRef = useRef(false);
   const vertexCountForFitRef = useRef(-1);
@@ -319,6 +352,8 @@ export default function MapCanvasInner({
 
     for (const m of markersRef.current) m.remove();
     markersRef.current = [];
+    for (const m of edgeDistanceMarkersRef.current) m.remove();
+    edgeDistanceMarkersRef.current = [];
 
     type MarkerEntry = {
       vertex: LocalVertex;
@@ -389,6 +424,37 @@ export default function MapCanvasInner({
 
       markersRef.current.push(marker);
     });
+
+    for (const f of edgeDistanceLabelFeatures(v, closed)) {
+      const coords = f.geometry.coordinates;
+      const label = String(f.properties?.label ?? "");
+      const el = createEdgeDistanceLabelEl(label, "main");
+      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat(coords as [number, number])
+        .addTo(map);
+      edgeDistanceMarkersRef.current.push(marker);
+    }
+
+    if (selectedSubId) {
+      const pack = subs.find((s) => s.polygon.localId === selectedSubId);
+      if (pack) {
+        for (const f of edgeDistanceLabelFeatures(
+          pack.vertices,
+          pack.polygon.isClosed,
+        )) {
+          const coords = f.geometry.coordinates;
+          const label = String(f.properties?.label ?? "");
+          const el = createEdgeDistanceLabelEl(label, "sub");
+          const marker = new maplibregl.Marker({
+            element: el,
+            anchor: "center",
+          })
+            .setLngLat(coords as [number, number])
+            .addTo(map);
+          edgeDistanceMarkersRef.current.push(marker);
+        }
+      }
+    }
 
     for (const m of poiMarkersRef.current) m.remove();
     poiMarkersRef.current = [];
@@ -468,6 +534,10 @@ export default function MapCanvasInner({
     if (allCoords.length === 0) {
       vertexCountForFitRef.current = -1;
       didFitForCurrentVertexSetRef.current = false;
+      applyEdgeDistanceMarkerVisibility(
+        edgeDistanceMarkersRef.current,
+        map.getZoom(),
+      );
       return;
     }
 
@@ -479,6 +549,10 @@ export default function MapCanvasInner({
 
     if (!dragPref) {
       map.fitBounds(bounds, { padding: 56, maxZoom: 18, duration: 500 });
+      applyEdgeDistanceMarkerVisibility(
+        edgeDistanceMarkersRef.current,
+        map.getZoom(),
+      );
       return;
     }
 
@@ -491,6 +565,11 @@ export default function MapCanvasInner({
       map.fitBounds(bounds, { padding: 56, maxZoom: 18, duration: 500 });
       didFitForCurrentVertexSetRef.current = true;
     }
+
+    applyEdgeDistanceMarkerVisibility(
+      edgeDistanceMarkersRef.current,
+      map.getZoom(),
+    );
   }, []);
 
   useLayoutEffect(() => {
@@ -539,8 +618,10 @@ export default function MapCanvasInner({
   ]);
 
   useEffect(() => {
-    const container = containerRef.current;
+    const container = mapContainerRef.current;
     if (!container) return;
+
+    let detachZoomListeners: (() => void) | null = null;
 
     const { initialCenter: ic, initialZoom: iz, showUserLocation: sul } =
       mountOptsRef.current;
@@ -660,6 +741,25 @@ export default function MapCanvasInner({
 
       styleReadyRef.current = true;
       syncMap(map);
+
+      const updateZoomAndEdgeLabels = () => {
+        const z = map.getZoom();
+        setMapZoomDisplay(Math.round(z * 100) / 100);
+        applyEdgeDistanceMarkerVisibility(edgeDistanceMarkersRef.current, z);
+      };
+      updateZoomAndEdgeLabels();
+      map.on("zoom", updateZoomAndEdgeLabels);
+      map.on("zoomend", updateZoomAndEdgeLabels);
+      map.on("moveend", updateZoomAndEdgeLabels);
+      detachZoomListeners = () => {
+        map.off("zoom", updateZoomAndEdgeLabels);
+        map.off("zoomend", updateZoomAndEdgeLabels);
+        map.off("moveend", updateZoomAndEdgeLabels);
+      };
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => map.resize());
+      });
     });
 
     mapRef.current = map;
@@ -667,15 +767,20 @@ export default function MapCanvasInner({
     const ro = new ResizeObserver(() => {
       map.resize();
     });
-    ro.observe(container);
+    const wrap = wrapperRef.current;
+    if (wrap) ro.observe(wrap);
+    else ro.observe(container);
 
     return () => {
+      detachZoomListeners?.();
       styleReadyRef.current = false;
       ro.disconnect();
       for (const m of markersRef.current) m.remove();
       markersRef.current = [];
       for (const m of poiMarkersRef.current) m.remove();
       poiMarkersRef.current = [];
+      for (const m of edgeDistanceMarkersRef.current) m.remove();
+      edgeDistanceMarkersRef.current = [];
       areaMarkerRef.current?.remove();
       areaMarkerRef.current = null;
       map.remove();
@@ -701,8 +806,25 @@ export default function MapCanvasInner({
 
   return (
     <div
-      ref={containerRef}
-      className={cn("min-h-[280px] w-full overflow-hidden rounded-lg", className)}
-    />
+      ref={wrapperRef}
+      className={cn(
+        "relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg",
+        className,
+      )}
+    >
+      <div
+        ref={mapContainerRef}
+        className="relative min-h-0 w-full min-w-0 flex-1 basis-0"
+      />
+      {/* Arriba a la izquierda, bajo el bloque del título del proyecto (overlay); el panel inferior tapaba bottom- */}
+      <div className="pointer-events-none absolute top-24 left-3 z-[50] flex max-w-[11rem] flex-col gap-0.5 rounded-md bg-black/80 px-2.5 py-1.5 font-mono text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm">
+        <span className="text-xs font-semibold tabular-nums tracking-tight">
+          Zoom: {mapZoomDisplay ?? "—"}
+        </span>
+        <span className="text-[10px] leading-snug text-white/80">
+          Distancias en mapa si zoom ≥ {EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM}
+        </span>
+      </div>
+    </div>
   );
 }

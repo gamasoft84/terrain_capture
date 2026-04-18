@@ -7,7 +7,10 @@ import type { MapCanvasProps } from "./MapCanvasInner";
 const MapCanvasInner = dynamic(() => import("./MapCanvasInner"), {
   ssr: false,
   loading: () => (
-    <Skeleton className="min-h-[280px] w-full rounded-lg" aria-label="Cargando mapa" />
+    <Skeleton
+      className="min-h-[280px] w-full flex-1 rounded-lg"
+      aria-label="Cargando mapa"
+    />
   ),
 });
 
