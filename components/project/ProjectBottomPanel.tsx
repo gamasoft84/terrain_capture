@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { blobFromStored } from "@/lib/db/blobFromStored";
@@ -62,6 +62,8 @@ export interface ProjectBottomPanelProps {
   onClosePolygon: () => void;
   onVertexClick: (vertex: LocalVertex, displayIndex: number) => void;
   closePolygonBusy?: boolean;
+  /** Bloque opcional encima de métricas (p. ej. gestión de sub-áreas). */
+  subPolygonManager?: ReactNode;
 }
 
 export function ProjectBottomPanel({
@@ -71,6 +73,7 @@ export function ProjectBottomPanel({
   onClosePolygon,
   onVertexClick,
   closePolygonBusy,
+  subPolygonManager,
 }: ProjectBottomPanelProps) {
   const [expanded, setExpanded] = useState(true);
 
@@ -114,6 +117,9 @@ export function ProjectBottomPanel({
 
       {expanded ? (
         <div className="flex max-h-[min(48vh,380px)] flex-col gap-3 px-3 pb-3">
+          {subPolygonManager ? (
+            <div className="min-h-0 shrink-0">{subPolygonManager}</div>
+          ) : null}
           <div className="text-muted-foreground grid grid-cols-3 gap-2 text-center text-xs">
             <div>
               <div className="text-foreground font-mono text-sm font-semibold">

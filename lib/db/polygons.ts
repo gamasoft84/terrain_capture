@@ -66,3 +66,18 @@ export async function updatePolygon(
     syncStatus: "pending",
   });
 }
+
+/** Borra el polígono y todos sus vértices (Dexie). No aplicar al polígono principal. */
+export async function deletePolygonCascade(
+  polygonLocalId: string,
+): Promise<void> {
+  const db = getDb();
+  const row = await db.polygons.get(polygonLocalId);
+  if (!row || row.type === "main") {
+    throw new Error("Solo se pueden eliminar sub-polígonos de forma explícita.");
+  }
+  await db.transaction("rw", db.vertices, db.polygons, async () => {
+    await db.vertices.where("polygonLocalId").equals(polygonLocalId).delete();
+    await db.polygons.delete(polygonLocalId);
+  });
+}

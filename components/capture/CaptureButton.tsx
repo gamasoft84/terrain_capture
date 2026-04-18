@@ -24,6 +24,7 @@ import {
   listSubPolygonsByProject,
 } from "@/lib/db/polygons";
 import type { LocalPolygon } from "@/lib/db/schema";
+import { SUB_POLYGON_COLOR_OPTIONS } from "@/lib/constants/subPolygonColors";
 import { POIForm } from "@/components/capture/POIForm";
 import { ProjectPhotoQuickForm } from "@/components/capture/ProjectPhotoQuickForm";
 import { VertexForm } from "@/components/capture/VertexForm";
@@ -39,14 +40,6 @@ export interface CaptureButtonProps {
   onCaptureSheetOpenChange?: (open: boolean) => void;
   showFab?: boolean;
 }
-
-const SUB_CREATE_COLORS = [
-  "#f97316",
-  "#8b5cf6",
-  "#06b6d4",
-  "#eab308",
-  "#ec4899",
-] as const;
 
 function geoErrorMessage(err: GeolocationPositionError): string {
   switch (err.code) {
@@ -110,7 +103,7 @@ export function CaptureButton({
     useState(false);
   const [subCreateName, setSubCreateName] = useState("Sub-área");
   const [subCreateColor, setSubCreateColor] = useState<string>(
-    SUB_CREATE_COLORS[0],
+    SUB_POLYGON_COLOR_OPTIONS[0],
   );
 
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -153,7 +146,7 @@ export function CaptureButton({
     setEffectivePolygonLocalId(null);
     setEffectivePolygonIsClosed(false);
     setSubCreateName("Sub-área");
-    setSubCreateColor(SUB_CREATE_COLORS[0]);
+    setSubCreateColor(SUB_POLYGON_COLOR_OPTIONS[0]);
     setGeoError(null);
     setGpsReading(null);
     averaged.cancelAveraging();
@@ -484,7 +477,7 @@ export function CaptureButton({
                 <div className="space-y-2">
                   <span className="text-sm font-medium">Color</span>
                   <div className="flex flex-wrap gap-2">
-                    {SUB_CREATE_COLORS.map((c) => (
+                    {SUB_POLYGON_COLOR_OPTIONS.map((c) => (
                       <button
                         key={c}
                         type="button"

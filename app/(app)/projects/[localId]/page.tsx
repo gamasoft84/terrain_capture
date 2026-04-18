@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -15,14 +15,19 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CaptureButton } from "@/components/capture/CaptureButton";
-import MapCanvas from "@/components/map/MapCanvas";
+import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { ProjectBottomPanel } from "@/components/project/ProjectBottomPanel";
+import { SubPolygonManager } from "@/components/project/SubPolygonManager";
 import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
-import { updatePolygon } from "@/lib/db/polygons";
+import {
+  listSubPolygonsByProject,
+  updatePolygon,
+} from "@/lib/db/polygons";
 import {
   deleteVertex,
+  listVerticesByPolygon,
   updateVertex,
 } from "@/lib/db/vertices";
 import { getDb } from "@/lib/db/schema";
@@ -32,6 +37,7 @@ type ProjectDetailData = {
   project: LocalProject | undefined;
   main: LocalPolygon | undefined;
   vertices: LocalVertex[];
+  subLayers: SubPolygonMapLayer[];
 };
 
 export default function ProjectDetailPage() {
@@ -46,6 +52,9 @@ export default function ProjectDetailPage() {
   );
   const [selectedDisplayIndex, setSelectedDisplayIndex] = useState(1);
   const [closePolygonBusy, setClosePolygonBusy] = useState(false);
+  const [selectedSubPolygonLocalId, setSelectedSubPolygonLocalId] = useState<
+    string | null
+  >(null);
 
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
@@ -60,20 +69,67 @@ export default function ProjectDetailPage() {
           .first();
         let vertices: LocalVertex[] = [];
         if (main != null) {
-          vertices = await db.vertices
-            .where("polygonLocalId")
-            .equals(main.localId)
-            .toArray();
-          vertices.sort((a, b) => a.orderIndex - b.orderIndex);
+          vertices = await listVerticesByPolygon(main.localId);
         }
-        return { project, main, vertices };
+        const subs = await listSubPolygonsByProject(localId);
+        const subLayers: SubPolygonMapLayer[] = await Promise.all(
+          subs.map(async (polygon) => ({
+            polygon,
+            vertices: await listVerticesByPolygon(polygon.localId),
+          })),
+        );
+        return { project, main, vertices, subLayers };
       } catch (e) {
         console.error("[TerrainCapture] proyecto Dexie", e);
-        return { project: undefined, main: undefined, vertices: [] };
+        return {
+          project: undefined,
+          main: undefined,
+          vertices: [],
+          subLayers: [],
+        };
       }
     },
     [localId],
   );
+
+  const selectedSubPolygonForUi = useMemo(() => {
+    if (!selectedSubPolygonLocalId || !data?.subLayers) {
+      return selectedSubPolygonLocalId;
+    }
+    const ok = data.subLayers.some(
+      (s) => s.polygon.localId === selectedSubPolygonLocalId,
+    );
+    return ok ? selectedSubPolygonLocalId : null;
+  }, [data?.subLayers, selectedSubPolygonLocalId]);
+
+  const resolveVertexDragTarget = useMemo(() => {
+    if (!data?.main || !allowVertexMapDrag) return undefined;
+    const main = data.main;
+    const subLayers = data.subLayers;
+    return (vertex: LocalVertex) => {
+      if (vertex.polygonLocalId === main.localId) {
+        return {
+          polygonLocalId: main.localId,
+          polygonIsClosed: main.isClosed,
+        };
+      }
+      if (
+        selectedSubPolygonForUi &&
+        vertex.polygonLocalId === selectedSubPolygonForUi
+      ) {
+        const sub = subLayers.find(
+          (s) => s.polygon.localId === vertex.polygonLocalId,
+        );
+        if (sub) {
+          return {
+            polygonLocalId: sub.polygon.localId,
+            polygonIsClosed: sub.polygon.isClosed,
+          };
+        }
+      }
+      return null;
+    };
+  }, [allowVertexMapDrag, data, selectedSubPolygonForUi]);
 
   const handleClosePolygon = useCallback(async () => {
     if (!data?.main || data.vertices.length < 3) return;
@@ -176,12 +232,12 @@ export default function ProjectDetailPage() {
           vertices={data.vertices}
           isClosed={data.main.isClosed}
           areaM2={data.main.areaM2 ?? null}
+          subLayers={data.subLayers}
+          selectedSubPolygonLocalId={selectedSubPolygonForUi}
+          onSelectSubPolygonFromMap={setSelectedSubPolygonLocalId}
           showUserLocation
           allowVertexDrag={allowVertexMapDrag}
-          vertexDragTarget={{
-            polygonLocalId: data.main.localId,
-            polygonIsClosed: data.main.isClosed,
-          }}
+          resolveVertexDragTarget={resolveVertexDragTarget}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
@@ -223,6 +279,14 @@ export default function ProjectDetailPage() {
         onClosePolygon={() => void handleClosePolygon()}
         onVertexClick={openVertexDetail}
         closePolygonBusy={closePolygonBusy}
+        subPolygonManager={
+          <SubPolygonManager
+            projectLocalId={data.project.localId}
+            subPolygons={data.subLayers.map((s) => s.polygon)}
+            selectedSubPolygonLocalId={selectedSubPolygonForUi}
+            onSelectSubPolygon={setSelectedSubPolygonLocalId}
+          />
+        }
       />
 
       <VertexDetailSheet

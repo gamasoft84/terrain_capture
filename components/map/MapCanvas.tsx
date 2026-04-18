@@ -11,7 +11,7 @@ const MapCanvasInner = dynamic(() => import("./MapCanvasInner"), {
   ),
 });
 
-export type { MapCanvasProps };
+export type { MapCanvasProps, SubPolygonMapLayer } from "./MapCanvasInner";
 
 export default function MapCanvas(props: MapCanvasProps) {
   return <MapCanvasInner {...props} />;
