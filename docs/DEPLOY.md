@@ -10,6 +10,7 @@ Guía breve para publicar **TerrainCapture** y enlazar backend/storage.
    (o `supabase link` + `supabase db push` si usas la CLI).
 3. **Storage**: confirma el bucket **`project-photos`** (o el nombre que use el código) y políticas que permitan a los clientes autenticados/anónimos según tu modelo. El [`supabase/README.md`](../supabase/README.md) resume el enfoque de desarrollo.
 4. Revisa **RLS** y políticas de Storage antes de abrir el proyecto a usuarios reales.
+5. **Vaciar datos de prueba** (solo entornos controlados): `npm run wipe:supabase` con `SUPABASE_SERVICE_ROLE_KEY` en `.env.local`. Por defecto es simulación; el borrado real requiere `--execute`. Ver comentarios en [`scripts/wipe-supabase-projects.mjs`](../scripts/wipe-supabase-projects.mjs).
 
 Variables que la app espera (ver [`.env.local.example`](../.env.local.example)):
 

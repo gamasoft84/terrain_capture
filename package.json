@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "analyze": "ANALYZE=true npm run build",
-    "pwa:icons": "node scripts/generate-pwa-assets.mjs"
+    "pwa:icons": "node scripts/generate-pwa-assets.mjs",
+    "wipe:supabase": "node scripts/wipe-supabase-projects.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
