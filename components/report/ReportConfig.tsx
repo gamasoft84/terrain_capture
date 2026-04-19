@@ -14,7 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { LocalProject } from "@/lib/db/schema";
+import MapCanvas, {
+  type SubPolygonMapLayer,
+} from "@/components/map/MapCanvas";
+import type { LocalPOI, LocalProject, LocalVertex } from "@/lib/db/schema";
 import {
   GAMASOFT_FOOTER_LINES,
   LEGAL_DISCLAIMER_ES,
@@ -35,9 +38,18 @@ export type ReportPreviewContext = {
   subPolygonCount?: number;
 };
 
+/** Datos para mostrar el mismo mapa que el PDF en la vista previa. */
+export type ReportMapPreviewProps = {
+  vertices: LocalVertex[];
+  polygonIsClosed: boolean;
+  subLayers: SubPolygonMapLayer[];
+  pois: LocalPOI[];
+};
+
 export interface ReportConfigProps {
   project: LocalProject;
   previewContext?: ReportPreviewContext;
+  mapPreview?: ReportMapPreviewProps;
   /** Si se definen, los botones dejan de estar deshabilitados (p. ej. al implementar 4.5–4.7). */
   onGeneratePdf?: (payload: ReportGenerationPayload) => void | Promise<void>;
   onGeneratePng?: (payload: ReportGenerationPayload) => void | Promise<void>;
@@ -79,6 +91,7 @@ function ReportPreview({
   surveyDate,
   executiveNotes,
   previewContext,
+  mapPreview,
 }: {
   project: LocalProject;
   sections: ReportSectionsState;
@@ -86,6 +99,7 @@ function ReportPreview({
   surveyDate: string;
   executiveNotes: string;
   previewContext?: ReportPreviewContext;
+  mapPreview?: ReportMapPreviewProps;
 }) {
   const activeList = useMemo(
     () =>
@@ -156,9 +170,23 @@ function ReportPreview({
             <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
               Mapa
             </p>
-            <div className="bg-muted/40 mt-2 flex aspect-[16/9] items-center justify-center rounded text-xs text-gray-500">
-              Captura del mapa con polígono
-            </div>
+            {mapPreview ? (
+              <div className="border-border bg-muted/30 relative mt-2 h-[220px] w-full overflow-hidden rounded-md border">
+                <MapCanvas
+                  className="h-[220px] min-h-[220px] w-full"
+                  vertices={mapPreview.vertices}
+                  isClosed={mapPreview.polygonIsClosed}
+                  subLayers={mapPreview.subLayers}
+                  pois={mapPreview.pois}
+                  showUserLocation={false}
+                  allowVertexDrag={false}
+                />
+              </div>
+            ) : (
+              <div className="bg-muted/40 mt-2 flex aspect-[16/9] items-center justify-center rounded text-xs text-gray-500">
+                Vista previa del mapa no disponible.
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -256,6 +284,7 @@ function ReportPreview({
 export function ReportConfig({
   project,
   previewContext,
+  mapPreview,
   onGeneratePdf,
   onGeneratePng,
   onShare,
@@ -421,6 +450,7 @@ export function ReportConfig({
           surveyDate={surveyDate}
           executiveNotes={executiveNotes}
           previewContext={previewContext}
+          mapPreview={mapPreview}
         />
       </div>
     </div>

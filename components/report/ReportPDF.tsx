@@ -105,13 +105,17 @@ const styles = StyleSheet.create({
   cellMd: { width: "22%", fontSize: 8 },
   cellGrow: { flex: 1, fontSize: 8 },
   galleryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     marginTop: 8,
+    width: "100%",
+  },
+  galleryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 14,
   },
   galleryCell: {
-    width: "31%",
-    marginBottom: 10,
+    width: "48%",
   },
   galleryImg: {
     width: "100%",
@@ -227,6 +231,15 @@ function chunk<T>(arr: T[], size: number): T[][] {
     out.push(arr.slice(i, i + size));
   }
   return out;
+}
+
+/** Dos columnas por fila: flexWrap + % en @react-pdf suele recortar o perder filas. */
+function chunkPairs<T>(arr: T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < arr.length; i += 2) {
+    rows.push(arr.slice(i, i + 2));
+  }
+  return rows;
 }
 
 function Footer({
@@ -463,30 +476,43 @@ function TerrainReportDocumentInner({
                 : ""}
             </Text>
             <View style={styles.galleryGrid}>
-              {part.map((g, idx) => (
-                <View key={`${g.originLabel}-${idx}`} style={styles.galleryCell}>
-                  {g.src ? (
-                    <Image src={g.src} style={styles.galleryImg} />
-                  ) : (
+              {chunkPairs(part).map((row, ri) => (
+                <View
+                  key={`gallery-row-${gi}-${ri}`}
+                  style={styles.galleryRow}
+                  wrap={false}
+                >
+                  {row.map((g, idx) => (
                     <View
-                      style={[
-                        styles.galleryImg,
-                        {
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: "#f5f5f4",
-                        },
-                      ]}
+                      key={`gal-${gi}-${ri}-${idx}-${g.originLabel}`}
+                      style={styles.galleryCell}
+                      wrap={false}
                     >
-                      <Text style={{ fontSize: 7, color: COLORS.muted }}>
-                        Sin imagen
-                      </Text>
+                      {g.src ? (
+                        <Image src={g.src} style={styles.galleryImg} />
+                      ) : (
+                        <View
+                          style={[
+                            styles.galleryImg,
+                            {
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: "#f5f5f4",
+                            },
+                          ]}
+                          wrap={false}
+                        >
+                          <Text style={{ fontSize: 7, color: COLORS.muted }}>
+                            Sin imagen
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={styles.caption}>{g.originLabel}</Text>
+                      {g.caption ? (
+                        <Text style={styles.caption}>{g.caption}</Text>
+                      ) : null}
                     </View>
-                  )}
-                  <Text style={styles.caption}>{g.originLabel}</Text>
-                  {g.caption ? (
-                    <Text style={styles.caption}>{g.caption}</Text>
-                  ) : null}
+                  ))}
                 </View>
               ))}
             </View>

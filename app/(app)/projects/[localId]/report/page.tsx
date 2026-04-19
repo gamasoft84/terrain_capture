@@ -298,6 +298,12 @@ export default function ProjectReportPage() {
         key={data.project.localId}
         project={data.project}
         previewContext={data.previewContext}
+        mapPreview={{
+          vertices: data.vertices,
+          polygonIsClosed: data.main?.isClosed ?? false,
+          subLayers: data.subLayers,
+          pois: data.pois,
+        }}
         onGeneratePdf={handleGeneratePdf}
         onGeneratePng={handleGeneratePng}
       />
