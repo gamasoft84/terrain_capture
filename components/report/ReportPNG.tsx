@@ -491,18 +491,21 @@ export function ReportPngExportHost({
         return;
       }
       const imgs = [...el.querySelectorAll("img")];
-      await Promise.all(
-        imgs.map(
-          (img) =>
-            new Promise<void>((resolve) => {
-              if (img.complete && img.naturalWidth > 0) resolve();
-              else {
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-              }
-            }),
-        ),
-      );
+      async function awaitImgDecoded(img: HTMLImageElement): Promise<void> {
+        await new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth > 0) resolve();
+          else {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }
+        });
+        try {
+          if (typeof img.decode === "function") await img.decode();
+        } catch {
+          /* decode puede fallar en algunas data URLs viejas */
+        }
+      }
+      await Promise.all(imgs.map((img) => awaitImgDecoded(img)));
       try {
         const { toPng } = await import("html-to-image");
         const dataUrl = await toPng(el, {

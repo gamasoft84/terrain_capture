@@ -202,7 +202,9 @@ export default function ProjectReportPage() {
         { src: null },
       ];
       if (payload.sections.gallery && data.galleryItems.length > 0) {
-        const hydrated = await hydrateGalleryForPdf(data.galleryItems);
+        const hydrated = await hydrateGalleryForPdf(data.galleryItems, {
+          inlineRemotePhotos: true,
+        });
         const picked = hydrated
           .filter((h) => h.src != null)
           .slice(0, 4)
