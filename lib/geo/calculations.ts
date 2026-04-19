@@ -192,7 +192,7 @@ export function consecutiveVertexEdgeSegments(
  * Zoom mínimo del mapa (nivel MapLibre) para mostrar las etiquetas de distancia
  * entre vértices sobre la imagen; por debajo se ocultan para no saturar la vista.
  */
-export const EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM = 20;
+export const EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM = 16;
 
 /** Formato legible para tramos (metros o km si ≥ 1000 m). */
 export function formatDistanceMeters(m: number | null | undefined): string {
