@@ -68,6 +68,10 @@ export interface MapCanvasProps {
   resolveVertexDragTarget?: (
     vertex: LocalVertex,
   ) => { polygonLocalId: string; polygonIsClosed: boolean } | null;
+  /** Oculta controles y HUD para capturas (PDF). */
+  minimalChrome?: boolean;
+  /** Mapa listo tras encuadre y primer ciclo idle (tiles). */
+  onCaptureReady?: () => void;
 }
 
 function sortedVertices(vertices: LocalVertex[]): LocalVertex[] {
@@ -288,6 +292,8 @@ export default function MapCanvasInner({
   className,
   allowVertexDrag = false,
   resolveVertexDragTarget,
+  minimalChrome = false,
+  onCaptureReady,
 }: MapCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -303,6 +309,7 @@ export default function MapCanvasInner({
   const onClickRef = useRef(onMapClick);
   const onSubPickRef = useRef(onSelectSubPolygonFromMap);
   const onPoiClickRef = useRef(onPoiMarkerClick);
+  const onCaptureReadyRef = useRef(onCaptureReady);
   const dataRef = useRef({
     vertices,
     isClosed,
@@ -320,6 +327,8 @@ export default function MapCanvasInner({
     showUserLocation,
   });
   const prevAllowVertexDragRef = useRef(allowVertexDrag);
+  const minimalChromeRef = useRef(minimalChrome);
+  minimalChromeRef.current = minimalChrome;
   /** Tras `dragend` en un POI, MapLibre puede disparar `click`: no abrir el sheet. */
   const poiSkipNextOpenRef = useRef(false);
 
@@ -657,9 +666,14 @@ export default function MapCanvasInner({
       zoom: iz,
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    if (!minimalChromeRef.current) {
+      map.addControl(
+        new maplibregl.NavigationControl({ showCompass: false }),
+        "top-right",
+      );
+    }
 
-    if (sul) {
+    if (sul && !minimalChromeRef.current) {
       map.addControl(
         new maplibregl.GeolocateControl({
           positionOptions: {
@@ -686,15 +700,16 @@ export default function MapCanvasInner({
     });
 
     map.on("load", () => {
-      /* Deja espacio bajo la fila Galería / POIs / Lista (overlay en la página). */
-      const topRight = map
-        .getContainer()
-        .querySelector<HTMLElement>(".maplibregl-ctrl-top-right");
-      const zoomGroup = topRight?.querySelector<HTMLElement>(
-        ".maplibregl-ctrl-group",
-      );
-      if (zoomGroup) {
-        zoomGroup.style.marginTop = "3.25rem";
+      if (!minimalChromeRef.current) {
+        const topRight = map
+          .getContainer()
+          .querySelector<HTMLElement>(".maplibregl-ctrl-top-right");
+        const zoomGroup = topRight?.querySelector<HTMLElement>(
+          ".maplibregl-ctrl-group",
+        );
+        if (zoomGroup) {
+          zoomGroup.style.marginTop = "3.25rem";
+        }
       }
 
       map.addSource(SOURCE_ID, {
@@ -774,6 +789,12 @@ export default function MapCanvasInner({
       requestAnimationFrame(() => {
         requestAnimationFrame(() => map.resize());
       });
+
+      map.once("idle", () => {
+        window.setTimeout(() => {
+          onCaptureReadyRef.current?.();
+        }, 700);
+      });
     });
 
     mapRef.current = map;
@@ -803,6 +824,10 @@ export default function MapCanvasInner({
   }, [syncMap]);
 
   useEffect(() => {
+    onCaptureReadyRef.current = onCaptureReady;
+  }, [onCaptureReady]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !styleReadyRef.current) return;
     syncMap(map);
@@ -830,15 +855,16 @@ export default function MapCanvasInner({
         ref={mapContainerRef}
         className="relative min-h-0 w-full min-w-0 flex-1 basis-0"
       />
-      {/* Arriba a la izquierda, bajo el bloque del título del proyecto (overlay); el panel inferior tapaba bottom- */}
-      <div className="pointer-events-none absolute top-24 left-3 z-[50] flex max-w-[11rem] flex-col gap-0.5 rounded-md bg-black/80 px-2.5 py-1.5 font-mono text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm">
-        <span className="text-xs font-semibold tabular-nums tracking-tight">
-          Zoom: {mapZoomDisplay ?? "—"}
-        </span>
-        <span className="text-[10px] leading-snug text-white/80">
-          Distancias en mapa si zoom ≥ {EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM}
-        </span>
-      </div>
+      {!minimalChrome ? (
+        <div className="pointer-events-none absolute top-24 left-3 z-[50] flex max-w-[11rem] flex-col gap-0.5 rounded-md bg-black/80 px-2.5 py-1.5 font-mono text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm">
+          <span className="text-xs font-semibold tabular-nums tracking-tight">
+            Zoom: {mapZoomDisplay ?? "—"}
+          </span>
+          <span className="text-[10px] leading-snug text-white/80">
+            Distancias en mapa si zoom ≥ {EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
