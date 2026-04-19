@@ -18,6 +18,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { GalleryLightbox } from "@/components/gallery/GalleryLightbox";
 import { ProjectGalleryAddSheet } from "@/components/gallery/ProjectGalleryAddSheet";
+import { PoiCaptureSheet } from "@/components/project/PoiCaptureSheet";
 import {
   blobFromStored,
   thumbnailOrPhotoBlob,
@@ -86,6 +87,7 @@ export default function ProjectGalleryPage() {
 
   const [filter, setFilter] = useState<GalleryFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [poiCaptureOpen, setPoiCaptureOpen] = useState(false);
   const [lightboxItem, setLightboxItem] = useState<ProjectGalleryItem | null>(
     null,
   );
@@ -207,7 +209,7 @@ export default function ProjectGalleryPage() {
             Mapa
           </Link>
           <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
-            Añadir foto
+            Añadir
           </Button>
         </div>
       </div>
@@ -249,6 +251,13 @@ export default function ProjectGalleryPage() {
         projectLocalId={data.project.localId}
         open={addOpen}
         onOpenChange={setAddOpen}
+        onRequestPoiCapture={() => setPoiCaptureOpen(true)}
+      />
+
+      <PoiCaptureSheet
+        projectLocalId={data.project.localId}
+        open={poiCaptureOpen}
+        onOpenChange={setPoiCaptureOpen}
       />
 
       {lightboxItem && lightboxSrc ? (

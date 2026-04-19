@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Hexagon, ImagePlus, Layers, MapPin } from "lucide-react";
+import { Camera, Hexagon, Layers } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,6 @@ import {
 } from "@/lib/db/polygons";
 import type { LocalPolygon } from "@/lib/db/schema";
 import { SUB_POLYGON_COLOR_OPTIONS } from "@/lib/constants/subPolygonColors";
-import { POIForm } from "@/components/capture/POIForm";
-import { ProjectPhotoQuickForm } from "@/components/capture/ProjectPhotoQuickForm";
 import { VertexBatchGalleryForm } from "@/components/capture/VertexBatchGalleryForm";
 import { VertexForm } from "@/components/capture/VertexForm";
 
@@ -54,10 +52,9 @@ type CapturePhase =
   | "quick"
   | "avg"
   | "form"
-  | "photoForm"
   | "vertexBatch";
 
-type CaptureEntity = "main_vertex" | "sub_vertex" | "poi" | "project_photo";
+type CaptureEntity = "main_vertex" | "sub_vertex";
 
 export function CaptureButton({
   polygonLocalId,
@@ -151,10 +148,33 @@ export function CaptureButton({
   const prevOpenRef = useRef(false);
   useEffect(() => {
     if (open && !prevOpenRef.current) {
-      resetFlow();
+      queueMicrotask(() => {
+        setGeoError(null);
+        setGpsReading(null);
+        averaged.cancelAveraging();
+        setSubCreateName("Sub-área");
+        setSubCreateColor(SUB_POLYGON_COLOR_OPTIONS[0]);
+        if (!enableSubPolygonCapture) {
+          setCaptureEntity("main_vertex");
+          setEffectivePolygonLocalId(polygonLocalId);
+          setEffectivePolygonIsClosed(polygonIsClosed);
+          setPhase("menu");
+        } else {
+          setPhase("entity");
+          setCaptureEntity(null);
+          setEffectivePolygonLocalId(null);
+          setEffectivePolygonIsClosed(false);
+        }
+      });
     }
     prevOpenRef.current = open;
-  }, [open, resetFlow]);
+  }, [
+    open,
+    averaged,
+    enableSubPolygonCapture,
+    polygonLocalId,
+    polygonIsClosed,
+  ]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -254,16 +274,6 @@ export function CaptureButton({
     }
   }, [projectLocalId, subCreateColor, subCreateName]);
 
-  const pickPoi = useCallback(() => {
-    setCaptureEntity("poi");
-    setPhase("menu");
-  }, []);
-
-  const pickProjectPhoto = useCallback(() => {
-    setCaptureEntity("project_photo");
-    setPhase("photoForm");
-  }, []);
-
   const sheetTitle = (() => {
     switch (phase) {
       case "entity":
@@ -272,14 +282,10 @@ export function CaptureButton({
         return "Sub-área";
       case "subCreate":
         return "Nuevo sub-polígono";
-      case "photoForm":
-        return "Foto adicional";
       case "vertexBatch":
         return "Vértices desde galería";
       case "form":
-        return captureEntity === "poi"
-          ? "Confirmar POI"
-          : "Confirmar vértice";
+        return "Confirmar vértice";
       case "quick":
         return "Captura rápida";
       case "avg":
@@ -292,13 +298,11 @@ export function CaptureButton({
   const sheetDescription = (() => {
     switch (phase) {
       case "entity":
-        return "Elige el tipo de dato antes de leer el GPS (si aplica).";
+        return "Vértices del mapa. POI y foto adicional están en la pestaña Galería.";
       case "subPick":
         return "Selecciona un sub-polígono existente o crea uno nuevo.";
       case "subCreate":
         return "Nombre y color para dibujar luego sus vértices en el mapa.";
-      case "photoForm":
-        return "Sin obligación de GPS. Puedes añadir ubicación si quieres.";
       case "vertexBatch":
         return "Varias fotos con GPS en EXIF. Orden de izquierda a derecha: P1, P2…";
       case "avg":
@@ -352,59 +356,42 @@ export function CaptureButton({
             ) : null}
 
             {phase === "entity" ? (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
-                  onClick={pickMainVertex}
-                >
-                  <Hexagon className="size-5 shrink-0" aria-hidden />
-                  <span className="text-sm font-medium">Vértice terreno principal</span>
-                  <span className="text-muted-foreground text-xs font-normal">
-                    Polígono del proyecto
-                  </span>
-                </Button>
-                {enableSubPolygonCapture ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Button
                     type="button"
                     variant="outline"
                     className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
-                    onClick={pickSubVertex}
+                    onClick={pickMainVertex}
                   >
-                    <Layers className="size-5 shrink-0" aria-hidden />
+                    <Hexagon className="size-5 shrink-0" aria-hidden />
                     <span className="text-sm font-medium">
-                      Vértice de sub-área
+                      Vértice terreno principal
                     </span>
                     <span className="text-muted-foreground text-xs font-normal">
-                      Cabaña, pozo, etc.
+                      Polígono del proyecto
                     </span>
                   </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
-                  onClick={pickPoi}
-                >
-                  <MapPin className="size-5 shrink-0 text-amber-600" aria-hidden />
-                  <span className="text-sm font-medium">Punto de interés (POI)</span>
-                  <span className="text-muted-foreground text-xs font-normal">
-                    Etiqueta libre + foto
-                  </span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
-                  onClick={pickProjectPhoto}
-                >
-                  <ImagePlus className="size-5 shrink-0" aria-hidden />
-                  <span className="text-sm font-medium">Foto adicional</span>
-                  <span className="text-muted-foreground text-xs font-normal">
-                    Sin GPS obligatorio
-                  </span>
-                </Button>
+                  {enableSubPolygonCapture ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
+                      onClick={pickSubVertex}
+                    >
+                      <Layers className="size-5 shrink-0" aria-hidden />
+                      <span className="text-sm font-medium">
+                        Vértice de sub-área
+                      </span>
+                      <span className="text-muted-foreground text-xs font-normal">
+                        Cabaña, pozo, etc.
+                      </span>
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="text-muted-foreground text-xs leading-snug">
+                  POI y foto adicional: pestaña Galería del proyecto.
+                </p>
               </div>
             ) : null}
 
@@ -517,9 +504,15 @@ export function CaptureButton({
                   variant="ghost"
                   size="sm"
                   className="self-start text-muted-foreground"
-                  onClick={() => setPhase("entity")}
+                  onClick={() =>
+                    enableSubPolygonCapture
+                      ? setPhase("entity")
+                      : handleOpenChange(false)
+                  }
                 >
-                  ← Cambiar tipo de captura
+                  {enableSubPolygonCapture
+                    ? "← Cambiar tipo de captura"
+                    : "← Cerrar"}
                 </Button>
                 <Button
                   type="button"
@@ -593,37 +586,16 @@ export function CaptureButton({
             ) : null}
 
             {phase === "form" && gpsReading ? (
-              captureEntity === "poi" ? (
-                <POIForm
-                  gpsReading={gpsReading}
-                  projectLocalId={projectLocalId}
-                  onCancel={() => {
-                    setPhase("menu");
-                    setGpsReading(null);
-                  }}
-                  onSaved={onSaved}
-                />
-              ) : (
-                <VertexForm
-                  gpsReading={gpsReading}
-                  captureMethod={captureMethod}
-                  polygonLocalId={vertexTargetId}
-                  projectLocalId={projectLocalId}
-                  polygonIsClosed={effectivePolygonIsClosed}
-                  onCancel={() => {
-                    setPhase("menu");
-                    setGpsReading(null);
-                  }}
-                  onSaved={onSaved}
-                />
-              )
-            ) : null}
-
-            {phase === "photoForm" ? (
-              <ProjectPhotoQuickForm
+              <VertexForm
+                gpsReading={gpsReading}
+                captureMethod={captureMethod}
+                polygonLocalId={vertexTargetId}
                 projectLocalId={projectLocalId}
-                requestGpsReading={() => geo.requestReading()}
-                onCancel={() => setPhase("entity")}
+                polygonIsClosed={effectivePolygonIsClosed}
+                onCancel={() => {
+                  setPhase("menu");
+                  setGpsReading(null);
+                }}
                 onSaved={onSaved}
               />
             ) : null}
