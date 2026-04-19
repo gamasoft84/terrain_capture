@@ -2,6 +2,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET = "project-photos";
 
+/** Extensión de objeto en Storage alineada con `contentType` (WebP tras compresión canvas). */
+export function pathExtensionForImageBlob(
+  blob: Blob,
+  mimeHint?: string,
+): string {
+  const mime = (blob.type || mimeHint || "").toLowerCase();
+  if (mime.includes("webp")) return "webp";
+  if (mime.includes("png")) return "png";
+  if (mime.includes("gif")) return "gif";
+  return "jpg";
+}
+
 export async function uploadToProjectPhotosBucket(
   client: SupabaseClient,
   path: string,

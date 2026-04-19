@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { dexieDebugInfo } from "@/lib/db/dexieDebugLog";
 import { logDexieBlobFailure } from "@/lib/db/logDexieBlobFailure";
-import { preparePhotoBlobForDexie } from "@/lib/db/preparePhotoBlobForDexie";
+import { preparePhotoForDexie } from "@/lib/db/preparePhotoBlobForDexie";
 import { getDb } from "@/lib/db/schema";
 import type { LocalVertex } from "@/lib/db/schema";
 import { syncManager } from "@/lib/db/sync";
@@ -32,13 +32,19 @@ export async function createVertex(
 
   let photoBytes: ArrayBuffer | undefined;
   let photoMime: string | undefined;
+  let thumbnailBytes: ArrayBuffer | undefined;
+  let thumbnailMime: string | undefined;
   if (rawPhoto != null) {
     try {
-      const prepared = await preparePhotoBlobForDexie(rawPhoto);
-      photoMime = prepared.type || "image/jpeg";
-      photoBytes = await prepared.arrayBuffer();
+      const prepared = await preparePhotoForDexie(rawPhoto);
+      photoMime = prepared.photo.type || "image/jpeg";
+      photoBytes = await prepared.photo.arrayBuffer();
+      if (prepared.thumbnail != null && prepared.thumbnail.size > 0) {
+        thumbnailMime = prepared.thumbnail.type || "image/webp";
+        thumbnailBytes = await prepared.thumbnail.arrayBuffer();
+      }
     } catch (prepErr) {
-      await logDexieBlobFailure("preparePhotoBlobForDexie (createVertex)", prepErr, {
+      await logDexieBlobFailure("preparePhotoForDexie (createVertex)", prepErr, {
         localId,
         polygonLocalId: rest.polygonLocalId,
         orderIndex: rest.orderIndex,
@@ -65,10 +71,17 @@ export async function createVertex(
         localId,
         byteLength: photoBytes.byteLength,
         photoMime,
+        thumbLength: thumbnailBytes?.byteLength,
       });
       await db.transaction("rw", db.vertices, async () => {
         await db.vertices.add(core);
-        await db.vertices.update(localId, { photoBytes, photoMime });
+        await db.vertices.update(localId, {
+          photoBytes,
+          photoMime,
+          ...(thumbnailBytes != null && thumbnailBytes.byteLength > 0
+            ? { thumbnailBytes, thumbnailMime }
+            : {}),
+        });
       });
     }
   } catch (err) {
@@ -125,13 +138,19 @@ export async function updateVertex(
   if (patch.photoBlob != null) {
     let photoBytes: ArrayBuffer;
     let photoMime: string;
+    let thumbnailBytes: ArrayBuffer | undefined;
+    let thumbnailMime: string | undefined;
     try {
-      const prepared = await preparePhotoBlobForDexie(patch.photoBlob);
-      photoMime = prepared.type || "image/jpeg";
-      photoBytes = await prepared.arrayBuffer();
+      const prepared = await preparePhotoForDexie(patch.photoBlob);
+      photoMime = prepared.photo.type || "image/jpeg";
+      photoBytes = await prepared.photo.arrayBuffer();
+      if (prepared.thumbnail != null && prepared.thumbnail.size > 0) {
+        thumbnailMime = prepared.thumbnail.type || "image/webp";
+        thumbnailBytes = await prepared.thumbnail.arrayBuffer();
+      }
     } catch (prepErr) {
       await logDexieBlobFailure(
-        "preparePhotoBlobForDexie (updateVertex)",
+        "preparePhotoForDexie (updateVertex)",
         prepErr,
         {
           localId,
@@ -151,6 +170,13 @@ export async function updateVertex(
           syncStatus: "pending",
         });
         delete v.photoBlob;
+        if (thumbnailBytes != null && thumbnailBytes.byteLength > 0) {
+          v.thumbnailBytes = thumbnailBytes;
+          v.thumbnailMime = thumbnailMime;
+        } else {
+          delete v.thumbnailBytes;
+          delete v.thumbnailMime;
+        }
       });
     } catch (err) {
       await logDexieBlobFailure("vertices.modify(photoBytes)", err, {

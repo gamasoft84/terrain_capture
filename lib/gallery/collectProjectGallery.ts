@@ -19,6 +19,8 @@ export type ProjectGalleryItem = {
   photoBlob?: Blob;
   photoBytes?: ArrayBuffer;
   photoMime?: string;
+  thumbnailBytes?: ArrayBuffer;
+  thumbnailMime?: string;
   syncStatus?: "pending" | "synced" | "error";
   syncErrorReason?: "photo_upload";
 };

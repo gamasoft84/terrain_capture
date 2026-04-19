@@ -14,7 +14,10 @@ import {
   RemoteEntityGoneError,
 } from "@/lib/db/sync/errors";
 import { centroidFromVerticesEwkt, pointEwkt, polygonFromVerticesEwkt } from "@/lib/db/sync/geo";
-import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
+import {
+  pathExtensionForImageBlob,
+  uploadToProjectPhotosBucket,
+} from "@/lib/supabase/storage";
 
 function assertUpdateRows(
   data: { id: string }[] | null,

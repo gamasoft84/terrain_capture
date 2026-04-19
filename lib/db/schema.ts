@@ -47,6 +47,9 @@ export interface LocalVertex {
   /** Foto en crudo (IndexedDB suele llevarlo mejor que `Blob` en Safari). */
   photoBytes?: ArrayBuffer;
   photoMime?: string;
+  /** Miniatura 200×200 WebP/JPEG para listas (evita decodificar la foto completa). */
+  thumbnailBytes?: ArrayBuffer;
+  thumbnailMime?: string;
   photoUrl?: string;
   note?: string;
   captureMethod:
@@ -75,6 +78,8 @@ export interface LocalPOI {
   photoBlob?: Blob;
   photoBytes?: ArrayBuffer;
   photoMime?: string;
+  thumbnailBytes?: ArrayBuffer;
+  thumbnailMime?: string;
   photoUrl?: string;
   note?: string;
   capturedAt: Date;
@@ -91,6 +96,8 @@ export interface LocalProjectPhoto {
   photoBlob?: Blob;
   photoBytes?: ArrayBuffer;
   photoMime?: string;
+  thumbnailBytes?: ArrayBuffer;
+  thumbnailMime?: string;
   photoUrl?: string;
   thumbnailUrl?: string;
   caption?: string;
@@ -205,6 +212,17 @@ export class TerrainCaptureDB extends Dexie {
         await migrateLegacyPhotoBlobsInTx(tx, "projectPhotos");
         await migrateLegacyPhotoBlobsInTx(tx, "pois");
       });
+    this.version(4).stores({
+      projects:
+        "localId, serverId, status, syncStatus, createdAt, updatedAt",
+      polygons: "localId, serverId, projectLocalId, type, syncStatus",
+      vertices: "localId, serverId, polygonLocalId, orderIndex, syncStatus",
+      pois: "localId, serverId, projectLocalId, syncStatus",
+      projectPhotos:
+        "localId, serverId, projectLocalId, syncStatus, capturedAt",
+      syncQueue: "++id, entityType, entityLocalId, status, createdAt",
+      tileCache: "url, zoom, cachedAt",
+    });
   }
 }
 

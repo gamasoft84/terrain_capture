@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { preparePhotoBlobForDexie } from "@/lib/db/preparePhotoBlobForDexie";
+import { preparePhotoForDexie } from "@/lib/db/preparePhotoBlobForDexie";
 import { getDb } from "@/lib/db/schema";
 import type { LocalProjectPhoto } from "@/lib/db/schema";
 import { syncManager } from "@/lib/db/sync";
@@ -25,10 +25,16 @@ export async function createProjectPhoto(
 
   let photoBytes: ArrayBuffer | undefined;
   let photoMime: string | undefined;
+  let thumbnailBytes: ArrayBuffer | undefined;
+  let thumbnailMime: string | undefined;
   if (rawPhoto != null) {
-    const prepared = await preparePhotoBlobForDexie(rawPhoto);
-    photoMime = prepared.type || "image/jpeg";
-    photoBytes = await prepared.arrayBuffer();
+    const prepared = await preparePhotoForDexie(rawPhoto);
+    photoMime = prepared.photo.type || "image/jpeg";
+    photoBytes = await prepared.photo.arrayBuffer();
+    if (prepared.thumbnail != null && prepared.thumbnail.size > 0) {
+      thumbnailMime = prepared.thumbnail.type || "image/webp";
+      thumbnailBytes = await prepared.thumbnail.arrayBuffer();
+    }
   }
 
   const core: LocalProjectPhoto = {
@@ -43,7 +49,13 @@ export async function createProjectPhoto(
   } else {
     await db.transaction("rw", db.projectPhotos, async () => {
       await db.projectPhotos.add(core);
-      await db.projectPhotos.update(localId, { photoBytes, photoMime });
+      await db.projectPhotos.update(localId, {
+        photoBytes,
+        photoMime,
+        ...(thumbnailBytes != null && thumbnailBytes.byteLength > 0
+          ? { thumbnailBytes, thumbnailMime }
+          : {}),
+      });
     });
   }
   void syncManager.enqueueCreate("photo", localId, {});

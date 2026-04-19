@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db/schema";
 import type { LocalPOI } from "@/lib/db/schema";
 import { syncManager } from "@/lib/db/sync";
 import { logDexieBlobFailure } from "@/lib/db/logDexieBlobFailure";
-import { preparePhotoBlobForDexie } from "@/lib/db/preparePhotoBlobForDexie";
+import { preparePhotoForDexie } from "@/lib/db/preparePhotoBlobForDexie";
 
 export async function listPoisByProject(
   projectLocalId: string,
@@ -28,14 +28,20 @@ export async function createPOI(
 
   let photoBytes: ArrayBuffer | undefined;
   let photoMime: string | undefined;
+  let thumbnailBytes: ArrayBuffer | undefined;
+  let thumbnailMime: string | undefined;
   if (rawPhoto != null) {
     try {
-      const prepared = await preparePhotoBlobForDexie(rawPhoto);
-      photoMime = prepared.type || "image/jpeg";
-      photoBytes = await prepared.arrayBuffer();
+      const prepared = await preparePhotoForDexie(rawPhoto);
+      photoMime = prepared.photo.type || "image/jpeg";
+      photoBytes = await prepared.photo.arrayBuffer();
+      if (prepared.thumbnail != null && prepared.thumbnail.size > 0) {
+        thumbnailMime = prepared.thumbnail.type || "image/webp";
+        thumbnailBytes = await prepared.thumbnail.arrayBuffer();
+      }
     } catch (prepErr) {
       await logDexieBlobFailure(
-        "preparePhotoBlobForDexie (createPOI)",
+        "preparePhotoForDexie (createPOI)",
         prepErr,
         {
           localId,
@@ -62,7 +68,13 @@ export async function createPOI(
     } else {
       await db.transaction("rw", db.pois, async () => {
         await db.pois.add(core);
-        await db.pois.update(localId, { photoBytes, photoMime });
+        await db.pois.update(localId, {
+          photoBytes,
+          photoMime,
+          ...(thumbnailBytes != null && thumbnailBytes.byteLength > 0
+            ? { thumbnailBytes, thumbnailMime }
+            : {}),
+        });
       });
     }
   } catch (err) {
@@ -105,13 +117,19 @@ export async function updatePOI(
   if (patch.photoBlob != null) {
     let photoBytes: ArrayBuffer;
     let photoMime: string;
+    let thumbnailBytes: ArrayBuffer | undefined;
+    let thumbnailMime: string | undefined;
     try {
-      const prepared = await preparePhotoBlobForDexie(patch.photoBlob);
-      photoMime = prepared.type || "image/jpeg";
-      photoBytes = await prepared.arrayBuffer();
+      const prepared = await preparePhotoForDexie(patch.photoBlob);
+      photoMime = prepared.photo.type || "image/jpeg";
+      photoBytes = await prepared.photo.arrayBuffer();
+      if (prepared.thumbnail != null && prepared.thumbnail.size > 0) {
+        thumbnailMime = prepared.thumbnail.type || "image/webp";
+        thumbnailBytes = await prepared.thumbnail.arrayBuffer();
+      }
     } catch (prepErr) {
       await logDexieBlobFailure(
-        "preparePhotoBlobForDexie (updatePOI)",
+        "preparePhotoForDexie (updatePOI)",
         prepErr,
         {
           localId,
@@ -131,6 +149,13 @@ export async function updatePOI(
           syncStatus: "pending",
         });
         delete row.photoBlob;
+        if (thumbnailBytes != null && thumbnailBytes.byteLength > 0) {
+          row.thumbnailBytes = thumbnailBytes;
+          row.thumbnailMime = thumbnailMime;
+        } else {
+          delete row.thumbnailBytes;
+          delete row.thumbnailMime;
+        }
       });
     } catch (err) {
       await logDexieBlobFailure("pois.modify(photoBytes)", err, {
