@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import type {
   Feature,
@@ -301,7 +301,6 @@ export default function MapCanvasInner({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const [mapZoomDisplay, setMapZoomDisplay] = useState<number | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const poiMarkersRef = useRef<maplibregl.Marker[]>([]);
   const edgeDistanceMarkersRef = useRef<maplibregl.Marker[]>([]);
@@ -711,18 +710,6 @@ export default function MapCanvasInner({
     });
 
     map.on("load", () => {
-      if (!minimalChromeRef.current) {
-        const topRight = map
-          .getContainer()
-          .querySelector<HTMLElement>(".maplibregl-ctrl-top-right");
-        const zoomGroup = topRight?.querySelector<HTMLElement>(
-          ".maplibregl-ctrl-group",
-        );
-        if (zoomGroup) {
-          zoomGroup.style.marginTop = "3.25rem";
-        }
-      }
-
       map.addSource(SOURCE_ID, {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -783,9 +770,10 @@ export default function MapCanvasInner({
       syncMap(map);
 
       const updateZoomAndEdgeLabels = () => {
-        const z = map.getZoom();
-        setMapZoomDisplay(Math.round(z * 100) / 100);
-        applyEdgeDistanceMarkerVisibility(edgeDistanceMarkersRef.current, z);
+        applyEdgeDistanceMarkerVisibility(
+          edgeDistanceMarkersRef.current,
+          map.getZoom(),
+        );
       };
       updateZoomAndEdgeLabels();
       map.on("zoom", updateZoomAndEdgeLabels);
@@ -881,16 +869,6 @@ export default function MapCanvasInner({
         ref={mapContainerRef}
         className="relative min-h-0 w-full min-w-0 flex-1 basis-0"
       />
-      {!minimalChrome ? (
-        <div className="pointer-events-none absolute top-24 left-3 z-[50] flex max-w-[11rem] flex-col gap-0.5 rounded-md bg-black/80 px-2.5 py-1.5 font-mono text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm">
-          <span className="text-xs font-semibold tabular-nums tracking-tight">
-            Zoom: {mapZoomDisplay ?? "—"}
-          </span>
-          <span className="text-[10px] leading-snug text-white/80">
-            Distancias en mapa si zoom ≥ {EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM}
-          </span>
-        </div>
-      ) : null}
     </div>
   );
 }
