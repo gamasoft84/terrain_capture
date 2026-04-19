@@ -111,6 +111,8 @@ export function TerrainReportPngTemplate({
             src={mapSrc}
             width={W}
             height={MAP_H}
+            loading="eager"
+            decoding="sync"
             style={{
               width: "100%",
               height: "100%",
@@ -329,6 +331,8 @@ export function TerrainReportPngTemplate({
                   <img
                     alt=""
                     src={g.src}
+                    loading="eager"
+                    decoding="sync"
                     style={{
                       width: "100%",
                       height: "100%",
@@ -471,7 +475,10 @@ export function ReportPngExportHost({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const onDoneRef = useRef(onDone);
-  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -484,7 +491,16 @@ export function ReportPngExportHost({
       await new Promise<void>((r) =>
         requestAnimationFrame(() => requestAnimationFrame(() => r())),
       );
-      await new Promise<void>((r) => setTimeout(r, 220));
+
+      const isMobileUi =
+        typeof navigator !== "undefined" &&
+        (navigator.maxTouchPoints > 0 ||
+          /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+
+      await new Promise<void>((r) =>
+        setTimeout(r, isMobileUi ? 520 : 240),
+      );
+
       const el = wrapRef.current;
       if (!el) {
         finish(null);
@@ -493,12 +509,17 @@ export function ReportPngExportHost({
       const imgs = [...el.querySelectorAll("img")];
       async function awaitImgDecoded(img: HTMLImageElement): Promise<void> {
         await new Promise<void>((resolve) => {
-          if (img.complete && img.naturalWidth > 0) resolve();
-          else {
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
+          if (img.complete && img.naturalWidth > 0) {
+            queueMicrotask(() => resolve());
+            return;
           }
+          const done = () => resolve();
+          img.onload = done;
+          img.onerror = done;
         });
+        for (let i = 0; i < 48 && img.complete && img.naturalWidth === 0; i++) {
+          await new Promise<void>((r) => setTimeout(r, 40));
+        }
         try {
           if (typeof img.decode === "function") await img.decode();
         } catch {
@@ -512,6 +533,7 @@ export function ReportPngExportHost({
           pixelRatio: 1,
           cacheBust: true,
           backgroundColor: COLORS.jungle,
+          skipFonts: true,
         });
         const res = await fetch(dataUrl);
         const blob = await res.blob();
@@ -528,13 +550,21 @@ export function ReportPngExportHost({
 
   return (
     <div
-      className="pointer-events-none fixed top-0 left-[-99999px] z-[401]"
-      style={{ overflow: "visible" }}
+      className="pointer-events-none fixed inset-0 z-[401] flex justify-center overflow-hidden"
+      style={{
+        opacity: 0.02,
+        visibility: "visible",
+      }}
       aria-hidden
     >
       <div
         ref={wrapRef}
-        style={{ width: W, display: "inline-block", verticalAlign: "top" }}
+        style={{
+          width: W,
+          display: "inline-block",
+          verticalAlign: "top",
+          transform: "translateZ(0)",
+        }}
       >
         <TerrainReportPngTemplate input={input} />
       </div>

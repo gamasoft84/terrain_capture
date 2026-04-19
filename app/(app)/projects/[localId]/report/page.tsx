@@ -24,6 +24,7 @@ import {
 } from "@/components/report/ReportPNG";
 import type { TerrainReportPdfInput } from "@/components/report/ReportPDF";
 import { hydrateGalleryForPdf } from "@/lib/report/pdfHydrate";
+import { normalizeTerrainReportPngRasterSources } from "@/lib/report/pngImageNormalize";
 import { collectProjectGallery } from "@/lib/gallery/collectProjectGallery";
 import { listSubPolygonsByProject } from "@/lib/db/polygons";
 import type { ReportGenerationPayload } from "@/lib/report/config";
@@ -213,14 +214,19 @@ export default function ProjectReportPage() {
         while (galleryImages.length < 4) galleryImages.push({ src: null });
       }
 
+      const normalized = await normalizeTerrainReportPngRasterSources({
+        mapImageDataUrl: mapImageDataUrl ?? null,
+        galleryImages,
+      });
+
       const input: TerrainReportPngInput = {
         payload,
         project: data.project,
         mainAreaM2: data.main?.areaM2 ?? null,
         mainPerimeterM: data.main?.perimeterM ?? null,
         vertexCount: data.vertices.length,
-        mapImageDataUrl: mapImageDataUrl ?? null,
-        galleryImages,
+        mapImageDataUrl: normalized.mapImageDataUrl,
+        galleryImages: normalized.galleryImages,
       };
 
       return await new Promise<Blob | null>((resolve) => {
