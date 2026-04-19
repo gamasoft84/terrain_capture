@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MapPin, Wifi, WifiOff } from "lucide-react";
 import { useSharedOnlineStatus } from "@/lib/context/OnlineStatusBridge";
+import { SyncIndicator } from "@/components/sync/SyncIndicator";
 
 function accuracyLevel(
   m: number | null,
@@ -66,7 +67,7 @@ export function TopBar() {
   const level = accuracyLevel(accuracyM);
 
   return (
-    <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4 backdrop-blur">
+    <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4 backdrop-blur">
       <div className="flex items-center gap-2">
         <MapPin className="text-primary size-6 shrink-0" aria-hidden />
         <span className="text-foreground font-semibold tracking-tight">
@@ -74,6 +75,7 @@ export function TopBar() {
         </span>
       </div>
       <div className="text-muted-foreground flex items-center gap-3 text-xs">
+        <SyncIndicator />
         <span className="flex items-center gap-1" title="Conexión (navigator + Supabase REST)">
           {online ? (
             <Wifi className="text-primary size-4" aria-hidden />
