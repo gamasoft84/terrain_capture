@@ -1,9 +1,13 @@
 "use client";
 
+import { Camera, Hexagon, ImagePlus } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LocalPOI, LocalPolygon, LocalProjectPhoto, LocalVertex } from "@/lib/db/schema";
-import { buildProjectStats } from "@/lib/project/buildProjectStats";
+import {
+  buildProjectStats,
+  type ProjectPhotoCounts,
+} from "@/lib/project/buildProjectStats";
 import {
   consecutiveVertexEdgeSegments,
   EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM,
@@ -12,7 +16,6 @@ import {
   formatPerimeterDisplay,
   type PolygonEdgeSegment,
 } from "@/lib/geo/calculations";
-import { cn } from "@/lib/utils";
 
 type SubLayerInput = {
   polygon: LocalPolygon;
@@ -90,12 +93,12 @@ export function PolygonStats({
               />
               <DotSep />
               <InlineMetric
-                label="Perím."
+                label="Perímetro"
                 value={formatPerimeterDisplay(stats.mainPerimeterM)}
               />
               <DotSep />
               <InlineMetric
-                label="Vért."
+                label="Vértices"
                 value={String(stats.mainVertexCount)}
               />
             </div>
@@ -111,55 +114,42 @@ export function PolygonStats({
             <p className="text-muted-foreground mb-1 font-sans text-[10px] font-medium tracking-wide uppercase">
               Resumen proyecto
             </p>
+            <p className="text-muted-foreground mb-1.5 font-sans text-[9px] leading-snug">
+              Área libre ≈ terreno principal menos suma de sub-áreas (estimación).
+            </p>
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <InlineMetric
-                label="Libre"
+                label="Área libre"
                 value={formatAreaDisplay(stats.freeAreaM2)}
               />
               <DotSep />
               <InlineMetric
-                label="Σ sub"
+                label="Suma sub-áreas"
                 value={formatAreaDisplay(
                   stats.subRows.length > 0 ? stats.sumSubAreasM2 : null,
                 )}
               />
               <DotSep />
               <InlineMetric
-                label="Vért tot"
+                label="Total vértices"
                 value={String(stats.totalVertices)}
               />
               <DotSep />
-              <InlineMetric label="POIs" value={String(stats.poiCount)} />
+              <InlineMetric
+                label="Puntos de interés"
+                value={String(stats.poiCount)}
+              />
             </div>
-          </div>
-
-          <div
-            className={cn(
-              "rounded-md border px-2 py-1.5",
-              stats.subAreasExceedMain
-                ? "border-amber-500/40 bg-amber-500/10"
-                : "border-border/60 bg-muted/15",
-            )}
-          >
-            <p className="text-foreground font-mono text-[11px] leading-snug tabular-nums">
-              <span className="text-muted-foreground font-sans text-[10px] font-normal">
-                Fotos{" "}
-              </span>
-              <span className="font-semibold">{stats.photoCounts.total}</span>
-              <span className="text-muted-foreground font-sans font-normal">
-                {" "}
-                (v {stats.photoCounts.fromVertices} · p{" "}
-                {stats.photoCounts.fromPois} · +{" "}
-                {stats.photoCounts.fromExtras})
-              </span>
-            </p>
             {stats.subAreasExceedMain ? (
-              <p className="text-amber-900 dark:text-amber-200 mt-1 text-[10px] leading-snug">
-                Σ subáreas &gt; área principal; &quot;libre&quot; en 0 — revisa
+              <p className="text-amber-900 dark:text-amber-200 mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-1.5 text-[10px] leading-snug">
+                La suma de sub-áreas supera el área del terreno principal; el
+                valor &quot;área libre&quot; queda en 0. Revisa solapes o la
                 geometría.
               </p>
             ) : null}
           </div>
+
+          <PhotoSummaryStrip counts={stats.photoCounts} />
         </CardContent>
       </Card>
 
@@ -230,12 +220,12 @@ export function PolygonStats({
                   />
                   <DotSep />
                   <InlineMetric
-                    label="Perím."
+                    label="Perímetro"
                     value={formatPerimeterDisplay(row.perimeterM)}
                   />
                   <DotSep />
                   <InlineMetric
-                    label="Vért."
+                    label="Vértices"
                     value={String(row.vertexCount)}
                   />
                 </div>
@@ -249,6 +239,87 @@ export function PolygonStats({
         Área, perímetro y distancias: estimaciones (Turf); no sustituye
         topografía certificada.
       </p>
+    </div>
+  );
+}
+
+function PhotoSummaryStrip({ counts }: { counts: ProjectPhotoCounts }) {
+  const { total, fromVertices, fromPois, fromExtras } = counts;
+
+  return (
+    <div className="border-border/70 from-primary/[0.06] to-muted/30 rounded-lg border bg-gradient-to-b via-muted/20 p-2.5 shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+          Fotos en el proyecto
+        </span>
+        <span
+          className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-mono text-sm font-bold tabular-nums shadow-sm"
+          title="Total de fotos con imagen guardada"
+        >
+          {total}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <PhotoStatMini
+          icon={
+            <Hexagon
+              className="text-primary size-3.5 opacity-90"
+              aria-hidden
+            />
+          }
+          label="Polígono"
+          hint="en vértices"
+          value={fromVertices}
+        />
+        <PhotoStatMini
+          icon={
+            <Camera className="text-primary size-3.5 opacity-90" aria-hidden />
+          }
+          label="POIs"
+          hint="con foto"
+          value={fromPois}
+        />
+        <PhotoStatMini
+          icon={
+            <ImagePlus
+              className="text-primary size-3.5 opacity-90"
+              aria-hidden
+            />
+          }
+          label="Galería"
+          hint="extra"
+          value={fromExtras}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PhotoStatMini({
+  icon,
+  label,
+  hint,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  hint: string;
+  value: number;
+}) {
+  return (
+    <div className="border-border/55 bg-background/85 flex flex-col items-center rounded-md border px-1 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <span className="text-muted-foreground mb-1 flex flex-col items-center gap-0.5">
+        {icon}
+        <span className="max-w-[5rem] text-[9px] font-semibold leading-tight">
+          {label}
+        </span>
+      </span>
+      <span className="text-foreground font-mono text-lg font-bold tabular-nums leading-none">
+        {value}
+      </span>
+      <span className="text-muted-foreground mt-0.5 text-[8px] leading-none">
+        {hint}
+      </span>
     </div>
   );
 }
