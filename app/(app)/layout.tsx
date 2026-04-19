@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/layout/BottomNav";
+import { FieldBatteryHint } from "@/components/layout/FieldBatteryHint";
 import { LastProjectRouteTracker } from "@/components/layout/LastProjectRouteTracker";
 import { TopBar } from "@/components/layout/TopBar";
 import { OfflineBanner } from "@/components/sync/OfflineBanner";
@@ -22,6 +23,7 @@ export default function AppShellLayout({
             <div className="bg-background sticky top-0 z-40 flex flex-col">
               <OfflineBanner />
               <TopBar />
+              <FieldBatteryHint />
             </div>
             <main className="flex flex-1 flex-col px-4 pb-28 pt-4">{children}</main>
             <BottomNav />

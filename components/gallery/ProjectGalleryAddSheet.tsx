@@ -8,6 +8,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ProjectPhotoQuickForm } from "@/components/capture/ProjectPhotoQuickForm";
+import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import { useGeolocation } from "@/lib/hooks/useGeolocation";
 
 export interface ProjectGalleryAddSheetProps {
@@ -21,9 +22,10 @@ export function ProjectGalleryAddSheet({
   open,
   onOpenChange,
 }: ProjectGalleryAddSheetProps) {
+  const highAccuracyGps = useHighAccuracyGpsDesired();
   const geo = useGeolocation({
     watch: false,
-    enableHighAccuracy: true,
+    enableHighAccuracy: highAccuracyGps,
     maximumAge: 5_000,
     timeout: 20_000,
     requestReadingOverrides: {

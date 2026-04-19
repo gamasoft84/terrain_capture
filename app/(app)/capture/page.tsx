@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import { useGeolocation } from "@/lib/hooks/useGeolocation";
 import { useGPSAveraged } from "@/lib/hooks/useGPSAveraged";
 
@@ -27,9 +28,21 @@ function errorMessage(err: GeolocationPositionError): string {
 
 export default function CapturePage() {
   const [lastRequest, setLastRequest] = useState<string | null>(null);
+  const [captureTabVisible, setCaptureTabVisible] = useState(true);
+  const highAccuracyGps = useHighAccuracyGpsDesired();
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const sync = () =>
+      setCaptureTabVisible(document.visibilityState === "visible");
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+
   const geo = useGeolocation({
-    watch: true,
-    enableHighAccuracy: true,
+    watch: captureTabVisible,
+    enableHighAccuracy: highAccuracyGps,
     maximumAge: 5_000,
     timeout: 20_000,
     requestReadingOverrides: {
@@ -40,7 +53,7 @@ export default function CapturePage() {
   });
 
   const averaged = useGPSAveraged({
-    enableHighAccuracy: true,
+    enableHighAccuracy: highAccuracyGps,
     maximumAge: 0,
     timeout: 15_000,
   });

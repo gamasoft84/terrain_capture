@@ -10,9 +10,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { OfflineMapDownloader } from "@/components/map/OfflineMapDownloader";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
+import { useBatterySaverControls } from "@/lib/hooks/useBatterySaver";
 
 export default function SettingsPage() {
   const { allowVertexMapDrag, setAllowVertexMapDrag } = useMapVertexDrag();
+  const { batterySaverEnabled, setBatterySaverEnabled } =
+    useBatterySaverControls();
 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
@@ -24,6 +27,37 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="border-border space-y-3 rounded-lg border p-4">
+            <div className="space-y-1">
+              <Label
+                htmlFor="battery-saver"
+                className="text-base font-medium"
+              >
+                Ahorro de batería (GPS)
+              </Label>
+              <p className="text-muted-foreground text-sm leading-snug">
+                Usa señal de ubicación menos precisa (
+                <span className="font-mono text-xs">enableHighAccuracy: false</span>
+                ): menos consumo en capturas largas. Desactívalo cuando necesites
+                máxima precisión en el vértice.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                id="battery-saver"
+                type="checkbox"
+                checked={batterySaverEnabled}
+                onChange={(e) => setBatterySaverEnabled(e.target.checked)}
+                className="border-input text-primary focus-visible:ring-ring size-5 shrink-0 rounded border shadow focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              />
+              <span className="text-sm">
+                {batterySaverEnabled
+                  ? "Activado: GPS optimizado para autonomía."
+                  : "Desactivado: máxima precisión GPS cuando la app la solicita."}
+              </span>
+            </div>
+          </div>
+
           <div className="border-border space-y-3 rounded-lg border p-4">
             <div className="space-y-1">
               <Label

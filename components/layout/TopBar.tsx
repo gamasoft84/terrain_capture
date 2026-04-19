@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { MapPin, Wifi, WifiOff } from "lucide-react";
-import { useSharedOnlineStatus } from "@/lib/context/OnlineStatusBridge";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
+import { useSharedOnlineStatus } from "@/lib/context/OnlineStatusBridge";
+import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 
 function accuracyLevel(
   m: number | null,
@@ -34,20 +35,34 @@ function accuracyColor(
 
 export function TopBar() {
   const { online } = useSharedOnlineStatus();
+  const highAccuracyGps = useHighAccuracyGpsDesired();
   const [accuracyM, setAccuracyM] = useState<number | null>(null);
   const [batteryPct, setBatteryPct] = useState<number | null>(null);
+  const [tabVisible, setTabVisible] = useState(true);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (typeof document === "undefined") return;
+    const sync = () => setTabVisible(document.visibilityState === "visible");
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation || !tabVisible) return;
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         setAccuracyM(pos.coords.accuracy ?? null);
       },
       () => setAccuracyM(null),
-      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
+      {
+        enableHighAccuracy: highAccuracyGps,
+        maximumAge: 5_000,
+        timeout: 15_000,
+      },
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, []);
+  }, [tabVisible, highAccuracyGps]);
 
   useEffect(() => {
     const nav = navigator as Navigator & {

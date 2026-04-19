@@ -14,6 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import {
   useGeolocation,
   type GPSReading,
@@ -127,9 +128,11 @@ export function CaptureButton({
     [open, projectLocalId],
   );
 
+  const highAccuracyGps = useHighAccuracyGpsDesired();
+
   const geo = useGeolocation({
     watch: phase === "avg",
-    enableHighAccuracy: true,
+    enableHighAccuracy: highAccuracyGps,
     maximumAge: 5_000,
     timeout: 20_000,
     requestReadingOverrides: {
@@ -140,7 +143,7 @@ export function CaptureButton({
   });
 
   const averaged = useGPSAveraged({
-    enableHighAccuracy: true,
+    enableHighAccuracy: highAccuracyGps,
     maximumAge: 0,
     timeout: 15_000,
   });

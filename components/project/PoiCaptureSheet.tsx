@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { POIForm } from "@/components/capture/POIForm";
+import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import {
   useGeolocation,
   type GPSReading,
@@ -48,9 +49,11 @@ export function PoiCaptureSheet({
   const [geoError, setGeoError] = useState<string | null>(null);
   const [gpsReading, setGpsReading] = useState<GPSReading | null>(null);
 
+  const highAccuracyGps = useHighAccuracyGpsDesired();
+
   const geo = useGeolocation({
     watch: phase === "avg",
-    enableHighAccuracy: true,
+    enableHighAccuracy: highAccuracyGps,
     maximumAge: 5_000,
     timeout: 20_000,
     requestReadingOverrides: {
@@ -61,7 +64,7 @@ export function PoiCaptureSheet({
   });
 
   const averaged = useGPSAveraged({
-    enableHighAccuracy: true,
+    enableHighAccuracy: highAccuracyGps,
     maximumAge: 0,
     timeout: 15_000,
   });
