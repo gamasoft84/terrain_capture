@@ -13,6 +13,7 @@ import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import { createVertex, nextOrderIndexForPolygon } from "@/lib/db/vertices";
+import { confirmIfOutsideMexicoRegion } from "@/lib/geo/mexicoBounds";
 import { extractGpsFromImageFile } from "@/lib/geo/exifGps";
 import { PhotoSourceInputs } from "@/components/capture/PhotoSourceInputs";
 import {
@@ -130,15 +131,19 @@ export function VertexForm({
       setError("La foto del vértice es obligatoria.");
       return;
     }
+    const useExif = Boolean(exifGps && preferExif);
+    const lat = useExif ? exifGps!.latitude : gpsReading.latitude;
+    const lng = useExif ? exifGps!.longitude : gpsReading.longitude;
+    if (!confirmIfOutsideMexicoRegion(lat, lng)) return;
+
     setSubmitting(true);
     try {
-      const useExif = Boolean(exifGps && preferExif);
       const orderIndex = await nextOrderIndexForPolygon(polygonLocalId);
       const vertexLocalId = await createVertex({
         polygonLocalId,
         orderIndex,
-        latitude: useExif ? exifGps!.latitude : gpsReading.latitude,
-        longitude: useExif ? exifGps!.longitude : gpsReading.longitude,
+        latitude: lat,
+        longitude: lng,
         gpsAccuracyM: useExif ? undefined : gpsReading.accuracy,
         altitudeM: useExif ? undefined : (gpsReading.altitude ?? undefined),
         captureMethod: useExif ? "photo_exif" : captureMethod,

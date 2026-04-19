@@ -25,6 +25,7 @@ import {
 } from "@/components/project/SubPolygonWorkflow";
 import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
 import { FieldPermissionsIntro } from "@/components/onboarding/FieldPermissionsIntro";
+import { analyzeClosedPolygonIssues } from "@/lib/geo/polygonTopology";
 import { ProjectMapExportMenu } from "@/components/project/ProjectMapExportMenu";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import {
@@ -168,6 +169,19 @@ export default function ProjectDetailPage() {
   const handleClosePolygon = useCallback(async () => {
     if (!data?.main || data.vertices.length < 3) return;
     const polygonId = data.main.localId;
+    const warns = analyzeClosedPolygonIssues(data.vertices);
+    if (warns.length > 0 && typeof window !== "undefined") {
+      const proceed = window.confirm(
+        [
+          "Antes de cerrar el polígono:",
+          "",
+          ...warns.map((w) => `• ${w}`),
+          "",
+          "¿Cerrar el polígono de todas formas?",
+        ].join("\n"),
+      );
+      if (!proceed) return;
+    }
     setClosePolygonBusy(true);
     try {
       await updatePolygon(polygonId, { isClosed: true });

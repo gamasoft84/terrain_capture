@@ -13,19 +13,7 @@ import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import { useGeolocation } from "@/lib/hooks/useGeolocation";
 import { useGPSAveraged } from "@/lib/hooks/useGPSAveraged";
 import { FieldPermissionsIntro } from "@/components/onboarding/FieldPermissionsIntro";
-
-function errorMessage(err: GeolocationPositionError): string {
-  switch (err.code) {
-    case 1:
-      return "Permiso denegado";
-    case 2:
-      return "Posición no disponible";
-    case 3:
-      return "Tiempo de espera agotado (en Mac prueba con Wi‑Fi y ubicación activa).";
-    default:
-      return err.message || "Error de geolocalización";
-  }
-}
+import { formatGeolocationUserMessage } from "@/lib/geo/permissionCopy";
 
 export default function CapturePage() {
   const [lastRequest, setLastRequest] = useState<string | null>(null);
@@ -100,7 +88,7 @@ export default function CapturePage() {
 
           {geo.error ? (
             <p className="text-destructive text-sm" role="alert">
-              {errorMessage(geo.error)}
+              {formatGeolocationUserMessage(geo.error)}
             </p>
           ) : null}
 

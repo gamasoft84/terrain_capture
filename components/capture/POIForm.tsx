@@ -13,6 +13,7 @@ import {
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { createPOI } from "@/lib/db/pois";
+import { confirmIfOutsideMexicoRegion } from "@/lib/geo/mexicoBounds";
 import { extractGpsFromImageFile } from "@/lib/geo/exifGps";
 import { PhotoSourceInputs } from "@/components/capture/PhotoSourceInputs";
 import {
@@ -131,14 +132,18 @@ export function POIForm({
       setError("La foto del punto es obligatoria.");
       return;
     }
+    const useExif = Boolean(exifGps && preferExif);
+    const lat = useExif ? exifGps!.latitude : gpsReading.latitude;
+    const lng = useExif ? exifGps!.longitude : gpsReading.longitude;
+    if (!confirmIfOutsideMexicoRegion(lat, lng)) return;
+
     setSubmitting(true);
     try {
-      const useExif = Boolean(exifGps && preferExif);
       const poiLocalId = await createPOI({
         projectLocalId,
         label: trimmed,
-        latitude: useExif ? exifGps!.latitude : gpsReading.latitude,
-        longitude: useExif ? exifGps!.longitude : gpsReading.longitude,
+        latitude: lat,
+        longitude: lng,
         gpsAccuracyM: useExif ? undefined : gpsReading.accuracy,
         note: note.trim() || undefined,
         photoBlob: file,

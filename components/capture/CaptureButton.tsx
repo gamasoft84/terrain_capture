@@ -14,6 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { formatGeolocationUserMessage } from "@/lib/geo/permissionCopy";
 import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import {
   useGeolocation,
@@ -43,19 +44,6 @@ export interface CaptureButtonProps {
   showFab?: boolean;
   /** Si es false, se oculta capturar vértice de sub-área (panel principal desactivó sub-áreas). */
   enableSubPolygonCapture?: boolean;
-}
-
-function geoErrorMessage(err: GeolocationPositionError): string {
-  switch (err.code) {
-    case 1:
-      return "Permiso de ubicación denegado.";
-    case 2:
-      return "Posición no disponible.";
-    case 3:
-      return "Tiempo de espera agotado. En Mac/interior el GPS por red puede tardar: activa ubicación precisa en Ajustes o prueba al aire libre / iPhone.";
-    default:
-      return err.message || "Error de GPS.";
-  }
 }
 
 type CapturePhase =
@@ -188,7 +176,9 @@ export function CaptureButton({
       })
       .catch((e: unknown) => {
         if (e && typeof e === "object" && "code" in e) {
-          setGeoError(geoErrorMessage(e as GeolocationPositionError));
+          setGeoError(
+            formatGeolocationUserMessage(e as GeolocationPositionError),
+          );
         } else {
           setGeoError("No se pudo obtener la posición.");
         }

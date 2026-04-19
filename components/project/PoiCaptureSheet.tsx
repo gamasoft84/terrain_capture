@@ -10,25 +10,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { POIForm } from "@/components/capture/POIForm";
+import { formatGeolocationUserMessage } from "@/lib/geo/permissionCopy";
 import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import {
   useGeolocation,
   type GPSReading,
 } from "@/lib/hooks/useGeolocation";
 import { useGPSAveraged } from "@/lib/hooks/useGPSAveraged";
-
-function geoErrorMessage(err: GeolocationPositionError): string {
-  switch (err.code) {
-    case 1:
-      return "Permiso de ubicación denegado.";
-    case 2:
-      return "Posición no disponible.";
-    case 3:
-      return "Tiempo de espera agotado.";
-    default:
-      return err.message || "Error de GPS.";
-  }
-}
 
 type Phase = "menu" | "quick" | "avg" | "form";
 
@@ -101,7 +89,9 @@ export function PoiCaptureSheet({
       })
       .catch((e: unknown) => {
         if (e && typeof e === "object" && "code" in e) {
-          setGeoError(geoErrorMessage(e as GeolocationPositionError));
+          setGeoError(
+            formatGeolocationUserMessage(e as GeolocationPositionError),
+          );
         } else {
           setGeoError("No se pudo obtener la posición.");
         }

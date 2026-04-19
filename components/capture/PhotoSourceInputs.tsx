@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { cameraPermissionShortLine } from "@/lib/geo/permissionCopy";
 
 type Props = {
   cameraInputId: string;
@@ -74,6 +75,12 @@ export function PhotoSourceInputs({
           {hasFile ? "Galería" : "Elegir de fotos"}
         </Button>
       </div>
+      <p className="text-muted-foreground text-[11px] leading-snug">
+        Las fotos grandes se comprimen automáticamente al guardarlas (WebP o JPEG).
+      </p>
+      <p className="text-muted-foreground text-[11px] leading-snug">
+        {cameraPermissionShortLine()}
+      </p>
     </div>
   );
 }

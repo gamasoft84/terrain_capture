@@ -101,8 +101,9 @@ function POIDetailSheetBody({
           >
             <p className="font-medium">No se pudo subir la foto</p>
             <p className="text-muted-foreground mt-1 text-xs">
-              Tras varios intentos la sincronización quedó en error. Podés
-              reintentar cuando la red mejore.
+              Tras varios intentos la subida al almacenamiento falló (red,
+              espacio del bucket en Supabase o políticas). Podés reintentar con
+              mejor señal; si persiste, revisa Storage y cuotas del proyecto.
             </p>
             <Button
               type="button"

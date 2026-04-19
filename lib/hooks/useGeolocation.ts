@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { geolocationDeniedHint } from "@/lib/geo/permissionCopy";
 
 export interface GPSReading {
   latitude: number;
@@ -162,12 +163,7 @@ export function useGeolocation(
     const applyPermissionState = () => {
       if (cancelled || !status) return;
       if (status.state === "denied") {
-        setError(
-          syntheticPositionError(
-            1,
-            "Permiso de ubicación denegado. Actívalo en Ajustes del sistema.",
-          ),
-        );
+        setError(syntheticPositionError(1, geolocationDeniedHint()));
         setIsLoading(false);
       } else if (status.state === "granted") {
         setError(null);
