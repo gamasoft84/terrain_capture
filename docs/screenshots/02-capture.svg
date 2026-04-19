@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img" aria-label="Marcador de captura: pantalla de captura">
+  <rect width="800" height="450" fill="#16161a"/>
+  <rect x="40" y="40" width="720" height="370" rx="8" fill="#232329" stroke="#3f3f46"/>
+  <text x="400" y="215" fill="#a1a1aa" font-family="ui-sans-serif,system-ui,sans-serif" font-size="20" text-anchor="middle">Marcador de captura</text>
+  <text x="400" y="248" fill="#71717a" font-family="ui-monospace,Menlo,monospace" font-size="14" text-anchor="middle">02  Captura (vértice / POI)</text>
+</svg>

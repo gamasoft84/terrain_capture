@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { OfflineMapDownloader } from "@/components/map/OfflineMapDownloader";
+import { FieldTestChecklist } from "@/components/settings/FieldTestChecklist";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { useBatterySaverControls } from "@/lib/hooks/useBatterySaver";
 
@@ -89,6 +90,8 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
+
+          <FieldTestChecklist />
         </CardContent>
       </Card>
 
