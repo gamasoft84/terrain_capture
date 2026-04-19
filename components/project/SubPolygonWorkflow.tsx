@@ -12,6 +12,8 @@ export interface SubPolygonWorkflowProps {
   /** Cuando está en false solo se muestra la opción para activar sub-áreas. */
   workflowEnabled: boolean;
   onWorkflowEnabledChange: (enabled: boolean) => void;
+  /** Captura de vértices por GPS para una sub-área (botón en cada fila). */
+  onRequestSubVertexCapture?: (polygon: LocalPolygon) => void;
 }
 
 export function SubPolygonWorkflow({
@@ -21,6 +23,7 @@ export function SubPolygonWorkflow({
   onSelectSubPolygon,
   workflowEnabled,
   onWorkflowEnabledChange,
+  onRequestSubVertexCapture,
 }: SubPolygonWorkflowProps) {
   const checkboxId = useId();
   const hasSubs = subPolygons.length > 0;
@@ -62,8 +65,8 @@ export function SubPolygonWorkflow({
           <span className="text-foreground font-mono font-medium">
             {subPolygons.length}
           </span>{" "}
-          sub-área(s). Activa la opción de arriba para gestionarlas o capturar
-          vértices de sub-área.
+          sub-área(s). Activá la opción de arriba para gestionarlas o usar
+          «GPS» en cada sub-área.
         </p>
       ) : null}
 
@@ -73,6 +76,7 @@ export function SubPolygonWorkflow({
           subPolygons={subPolygons}
           selectedSubPolygonLocalId={selectedSubPolygonLocalId}
           onSelectSubPolygon={onSelectSubPolygon}
+          onRequestSubVertexCapture={onRequestSubVertexCapture}
         />
       ) : null}
     </div>

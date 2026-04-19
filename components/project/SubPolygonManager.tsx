@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,8 @@ export interface SubPolygonManagerProps {
   subPolygons: LocalPolygon[];
   selectedSubPolygonLocalId: string | null;
   onSelectSubPolygon: (localId: string | null) => void;
+  /** Abre el flujo de captura GPS para los vértices de esta sub-área. */
+  onRequestSubVertexCapture?: (polygon: LocalPolygon) => void;
 }
 
 export function SubPolygonManager({
@@ -25,6 +28,7 @@ export function SubPolygonManager({
   subPolygons,
   selectedSubPolygonLocalId,
   onSelectSubPolygon,
+  onRequestSubVertexCapture,
 }: SubPolygonManagerProps) {
   const [createName, setCreateName] = useState("Sub-área");
   const [createColor, setCreateColor] = useState<string>(
@@ -155,8 +159,8 @@ export function SubPolygonManager({
 
       {subPolygons.length === 0 ? (
         <p className="text-muted-foreground text-xs">
-          No hay sub-áreas. Crea una para cabaña, aljibe, etc., y captura sus
-          vértices desde Capturar → Vértice de sub-área.
+          No hay sub-áreas. Creá una para cabaña, aljibe, etc.; después usá
+          «Capturar vértice» en la fila de cada sub-área.
         </p>
       ) : (
         <ul className="max-h-40 space-y-1.5 overflow-y-auto pr-0.5 [-webkit-overflow-scrolling:touch]">
@@ -241,6 +245,18 @@ export function SubPolygonManager({
                         </span>
                       ) : null}
                     </button>
+                    {onRequestSubVertexCapture ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="h-8 shrink-0 gap-1 px-2 text-xs"
+                        onClick={() => onRequestSubVertexCapture(p)}
+                      >
+                        <Camera className="size-3.5" aria-hidden />
+                        GPS
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
                       variant="ghost"

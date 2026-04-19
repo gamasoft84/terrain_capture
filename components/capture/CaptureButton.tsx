@@ -1,11 +1,8 @@
 "use client";
 
-import { Camera, Hexagon, Layers } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
+import { Camera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -21,17 +18,11 @@ import {
   type GPSReading,
 } from "@/lib/hooks/useGeolocation";
 import { useGPSAveraged } from "@/lib/hooks/useGPSAveraged";
-import {
-  createPolygon,
-  listSubPolygonsByProject,
-} from "@/lib/db/polygons";
-import type { LocalPolygon } from "@/lib/db/schema";
-import { SUB_POLYGON_COLOR_OPTIONS } from "@/lib/constants/subPolygonColors";
 import { VertexBatchGalleryForm } from "@/components/capture/VertexBatchGalleryForm";
 import { VertexForm } from "@/components/capture/VertexForm";
 
 export interface CaptureButtonProps {
-  /** Polígono principal (vértices del terreno). */
+  /** Polígono al que se añaden vértices (principal o sub-área). */
   polygonLocalId: string;
   projectLocalId: string;
   polygonIsClosed: boolean;
@@ -40,21 +31,11 @@ export interface CaptureButtonProps {
   captureSheetOpen?: boolean;
   onCaptureSheetOpenChange?: (open: boolean) => void;
   showFab?: boolean;
-  /** Si es false, se oculta capturar vértice de sub-área (panel principal desactivó sub-áreas). */
-  enableSubPolygonCapture?: boolean;
+  /** Texto bajo el título en el menú GPS (p. ej. «Sub-área: Cabaña»). */
+  captureTargetHint?: string;
 }
 
-type CapturePhase =
-  | "entity"
-  | "subPick"
-  | "subCreate"
-  | "menu"
-  | "quick"
-  | "avg"
-  | "form"
-  | "vertexBatch";
-
-type CaptureEntity = "main_vertex" | "sub_vertex";
+type CapturePhase = "menu" | "quick" | "avg" | "form" | "vertexBatch";
 
 export function CaptureButton({
   polygonLocalId,
@@ -65,7 +46,7 @@ export function CaptureButton({
   captureSheetOpen: captureSheetOpenProp,
   onCaptureSheetOpenChange,
   showFab = true,
-  enableSubPolygonCapture = true,
+  captureTargetHint,
 }: CaptureButtonProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const controlled =
@@ -83,35 +64,13 @@ export function CaptureButton({
     [controlled, onCaptureSheetOpenChange],
   );
 
-  const [phase, setPhase] = useState<CapturePhase>("entity");
-  const [captureEntity, setCaptureEntity] = useState<CaptureEntity | null>(
-    null,
-  );
-  const [effectivePolygonLocalId, setEffectivePolygonLocalId] = useState<
-    string | null
-  >(null);
-  const [effectivePolygonIsClosed, setEffectivePolygonIsClosed] =
-    useState(false);
-  const [subCreateName, setSubCreateName] = useState("Sub-área");
-  const [subCreateColor, setSubCreateColor] = useState<string>(
-    SUB_POLYGON_COLOR_OPTIONS[0],
-  );
+  const [phase, setPhase] = useState<CapturePhase>("menu");
 
   const [geoError, setGeoError] = useState<string | null>(null);
   const [captureMethod, setCaptureMethod] = useState<
     "gps_single" | "gps_averaged"
   >("gps_single");
   const [gpsReading, setGpsReading] = useState<GPSReading | null>(null);
-
-  const subPolygons = useLiveQuery(
-    async () => {
-      if (typeof window === "undefined" || !open || !projectLocalId) {
-        return [] as LocalPolygon[];
-      }
-      return listSubPolygonsByProject(projectLocalId);
-    },
-    [open, projectLocalId],
-  );
 
   const highAccuracyGps = useHighAccuracyGpsDesired();
 
@@ -134,12 +93,7 @@ export function CaptureButton({
   });
 
   const resetFlow = useCallback(() => {
-    setPhase("entity");
-    setCaptureEntity(null);
-    setEffectivePolygonLocalId(null);
-    setEffectivePolygonIsClosed(false);
-    setSubCreateName("Sub-área");
-    setSubCreateColor(SUB_POLYGON_COLOR_OPTIONS[0]);
+    setPhase("menu");
     setGeoError(null);
     setGpsReading(null);
     averaged.cancelAveraging();
@@ -152,29 +106,11 @@ export function CaptureButton({
         setGeoError(null);
         setGpsReading(null);
         averaged.cancelAveraging();
-        setSubCreateName("Sub-área");
-        setSubCreateColor(SUB_POLYGON_COLOR_OPTIONS[0]);
-        if (!enableSubPolygonCapture) {
-          setCaptureEntity("main_vertex");
-          setEffectivePolygonLocalId(polygonLocalId);
-          setEffectivePolygonIsClosed(polygonIsClosed);
-          setPhase("menu");
-        } else {
-          setPhase("entity");
-          setCaptureEntity(null);
-          setEffectivePolygonLocalId(null);
-          setEffectivePolygonIsClosed(false);
-        }
+        setPhase("menu");
       });
     }
     prevOpenRef.current = open;
-  }, [
-    open,
-    averaged,
-    enableSubPolygonCapture,
-    polygonLocalId,
-    polygonIsClosed,
-  ]);
+  }, [open, averaged]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -234,54 +170,8 @@ export function CaptureButton({
     handleOpenChange(false);
   }, [handleOpenChange]);
 
-  const pickMainVertex = useCallback(() => {
-    setCaptureEntity("main_vertex");
-    setEffectivePolygonLocalId(polygonLocalId);
-    setEffectivePolygonIsClosed(polygonIsClosed);
-    setPhase("menu");
-  }, [polygonIsClosed, polygonLocalId]);
-
-  const pickSubVertex = useCallback(() => {
-    setCaptureEntity("sub_vertex");
-    setPhase("subPick");
-  }, []);
-
-  const pickSubPolygon = useCallback((p: LocalPolygon) => {
-    setEffectivePolygonLocalId(p.localId);
-    setEffectivePolygonIsClosed(p.isClosed);
-    setPhase("menu");
-  }, []);
-
-  const goSubCreate = useCallback(() => {
-    setPhase("subCreate");
-  }, []);
-
-  const submitSubCreate = useCallback(async () => {
-    const name = subCreateName.trim() || "Sub-área";
-    try {
-      const id = await createPolygon({
-        projectLocalId,
-        name,
-        type: "sub",
-        color: subCreateColor,
-        isClosed: false,
-      });
-      setEffectivePolygonLocalId(id);
-      setEffectivePolygonIsClosed(false);
-      setPhase("menu");
-    } catch {
-      setGeoError("No se pudo crear el sub-polígono.");
-    }
-  }, [projectLocalId, subCreateColor, subCreateName]);
-
   const sheetTitle = (() => {
     switch (phase) {
-      case "entity":
-        return "¿Qué vas a capturar?";
-      case "subPick":
-        return "Sub-área";
-      case "subCreate":
-        return "Nuevo sub-polígono";
       case "vertexBatch":
         return "Vértices desde galería";
       case "form":
@@ -291,18 +181,16 @@ export function CaptureButton({
       case "avg":
         return "Captura precisa";
       default:
-        return "Posición GPS";
+        return "Capturar vértice";
     }
   })();
 
   const sheetDescription = (() => {
     switch (phase) {
-      case "entity":
-        return "Vértices del mapa. POI y foto adicional están en la pestaña Galería.";
-      case "subPick":
-        return "Selecciona un sub-polígono existente o crea uno nuevo.";
-      case "subCreate":
-        return "Nombre y color para dibujar luego sus vértices en el mapa.";
+      case "menu":
+        return captureTargetHint
+          ? `${captureTargetHint}. Elegí cómo leer el GPS abajo.`
+          : "Terreno principal. POI y foto adicional: pestaña Galería. Elegí cómo leer el GPS.";
       case "vertexBatch":
         return "Varias fotos con GPS en EXIF. Orden de izquierda a derecha: P1, P2…";
       case "avg":
@@ -311,9 +199,6 @@ export function CaptureButton({
         return null;
     }
   })();
-
-  const vertexTargetId =
-    effectivePolygonLocalId ?? polygonLocalId;
 
   return (
     <>
@@ -355,148 +240,6 @@ export function CaptureButton({
               </p>
             ) : null}
 
-            {phase === "entity" ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
-                    onClick={pickMainVertex}
-                  >
-                    <Hexagon className="size-5 shrink-0" aria-hidden />
-                    <span className="text-sm font-medium">
-                      Vértice terreno principal
-                    </span>
-                    <span className="text-muted-foreground text-xs font-normal">
-                      Polígono del proyecto
-                    </span>
-                  </Button>
-                  {enableSubPolygonCapture ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-auto min-h-[4.5rem] flex-col gap-1 py-3 text-left"
-                      onClick={pickSubVertex}
-                    >
-                      <Layers className="size-5 shrink-0" aria-hidden />
-                      <span className="text-sm font-medium">
-                        Vértice de sub-área
-                      </span>
-                      <span className="text-muted-foreground text-xs font-normal">
-                        Cabaña, pozo, etc.
-                      </span>
-                    </Button>
-                  ) : null}
-                </div>
-                <p className="text-muted-foreground text-xs leading-snug">
-                  POI y foto adicional: pestaña Galería del proyecto.
-                </p>
-              </div>
-            ) : null}
-
-            {phase === "subPick" ? (
-              <div className="flex flex-col gap-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="self-start text-muted-foreground"
-                  onClick={() => setPhase("entity")}
-                >
-                  ← Cambiar tipo de captura
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={goSubCreate}
-                >
-                  Crear nuevo sub-polígono
-                </Button>
-                <div className="text-muted-foreground text-xs">
-                  Sub-áreas existentes
-                </div>
-                {subPolygons === undefined ? (
-                  <p className="text-muted-foreground text-sm">Cargando…</p>
-                ) : subPolygons.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">
-                    No hay sub-áreas todavía. Crea una con el botón de arriba.
-                  </p>
-                ) : (
-                  <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto">
-                    {subPolygons.map((p) => (
-                      <li key={p.localId}>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-auto w-full justify-start gap-2 py-3"
-                          onClick={() => pickSubPolygon(p)}
-                        >
-                          <span
-                            className="size-3 shrink-0 rounded-full border"
-                            style={{ backgroundColor: p.color }}
-                            aria-hidden
-                          />
-                          <span className="truncate text-left">{p.name}</span>
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ) : null}
-
-            {phase === "subCreate" ? (
-              <div className="flex flex-col gap-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="self-start text-muted-foreground"
-                  onClick={() => setPhase("subPick")}
-                >
-                  ← Volver a la lista
-                </Button>
-                <div className="space-y-2">
-                  <Label htmlFor="sub-create-name">Nombre</Label>
-                  <Input
-                    id="sub-create-name"
-                    value={subCreateName}
-                    onChange={(e) => setSubCreateName(e.target.value)}
-                    placeholder="Cabaña, aljibe…"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <span className="text-sm font-medium">Color</span>
-                  <div className="flex flex-wrap gap-2">
-                    {SUB_POLYGON_COLOR_OPTIONS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        className={cn(
-                          "size-9 rounded-full border-2 transition-transform",
-                          subCreateColor === c
-                            ? "border-foreground scale-110"
-                            : "border-transparent",
-                        )}
-                        style={{ backgroundColor: c }}
-                        aria-label={`Color ${c}`}
-                        onClick={() => setSubCreateColor(c)}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  className="w-full"
-                  onClick={() => void submitSubCreate()}
-                >
-                  Crear y continuar
-                </Button>
-              </div>
-            ) : null}
-
             {phase === "menu" ? (
               <div className="flex flex-col gap-3">
                 <Button
@@ -504,15 +247,9 @@ export function CaptureButton({
                   variant="ghost"
                   size="sm"
                   className="self-start text-muted-foreground"
-                  onClick={() =>
-                    enableSubPolygonCapture
-                      ? setPhase("entity")
-                      : handleOpenChange(false)
-                  }
+                  onClick={() => handleOpenChange(false)}
                 >
-                  {enableSubPolygonCapture
-                    ? "← Cambiar tipo de captura"
-                    : "← Cerrar"}
+                  ← Cerrar
                 </Button>
                 <Button
                   type="button"
@@ -529,17 +266,14 @@ export function CaptureButton({
                 >
                   Captura precisa
                 </Button>
-                {captureEntity === "main_vertex" ||
-                captureEntity === "sub_vertex" ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-12 w-full text-base"
-                    onClick={() => setPhase("vertexBatch")}
-                  >
-                    Varias fotos (galería)
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 w-full text-base"
+                  onClick={() => setPhase("vertexBatch")}
+                >
+                  Varias fotos (galería)
+                </Button>
               </div>
             ) : null}
 
@@ -587,11 +321,12 @@ export function CaptureButton({
 
             {phase === "form" && gpsReading ? (
               <VertexForm
+                key={polygonLocalId}
                 gpsReading={gpsReading}
                 captureMethod={captureMethod}
-                polygonLocalId={vertexTargetId}
+                polygonLocalId={polygonLocalId}
                 projectLocalId={projectLocalId}
-                polygonIsClosed={effectivePolygonIsClosed}
+                polygonIsClosed={polygonIsClosed}
                 onCancel={() => {
                   setPhase("menu");
                   setGpsReading(null);
@@ -602,9 +337,10 @@ export function CaptureButton({
 
             {phase === "vertexBatch" ? (
               <VertexBatchGalleryForm
-                polygonLocalId={vertexTargetId}
+                key={polygonLocalId}
+                polygonLocalId={polygonLocalId}
                 projectLocalId={projectLocalId}
-                polygonIsClosed={effectivePolygonIsClosed}
+                polygonIsClosed={polygonIsClosed}
                 onCancel={() => setPhase("menu")}
                 onSaved={onSaved}
               />

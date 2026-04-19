@@ -76,6 +76,11 @@ export default function ProjectDetailPage() {
   >(null);
 
   const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
+  const [vertexCaptureOverride, setVertexCaptureOverride] = useState<{
+    polygonLocalId: string;
+    polygonIsClosed: boolean;
+    name: string;
+  } | null>(null);
   const [vertexSheetOpen, setVertexSheetOpen] = useState(false);
   const [selectedVertex, setSelectedVertex] = useState<LocalVertex | null>(
     null,
@@ -334,6 +339,25 @@ export default function ProjectDetailPage() {
     return fresh ?? selectedPoi;
   }, [data, selectedPoi]);
 
+  const handleCaptureSheetOpenChange = useCallback((next: boolean) => {
+    setCaptureSheetOpen(next);
+    if (!next) setVertexCaptureOverride(null);
+  }, []);
+
+  const openMainVertexCapture = useCallback(() => {
+    setVertexCaptureOverride(null);
+    setCaptureSheetOpen(true);
+  }, []);
+
+  const openSubVertexCapture = useCallback((p: LocalPolygon) => {
+    setVertexCaptureOverride({
+      polygonLocalId: p.localId,
+      polygonIsClosed: p.isClosed,
+      name: p.name,
+    });
+    setCaptureSheetOpen(true);
+  }, []);
+
   if (data === undefined) {
     return (
       <div className="flex flex-col gap-3">
@@ -462,14 +486,22 @@ export default function ProjectDetailPage() {
       </div>
 
       <CaptureButton
-        polygonLocalId={data.main.localId}
+        polygonLocalId={
+          vertexCaptureOverride?.polygonLocalId ?? data.main.localId
+        }
         projectLocalId={data.project.localId}
-        polygonIsClosed={data.main.isClosed}
+        polygonIsClosed={
+          vertexCaptureOverride?.polygonIsClosed ?? data.main.isClosed
+        }
         disabled={false}
         showFab={false}
         captureSheetOpen={captureSheetOpen}
-        onCaptureSheetOpenChange={setCaptureSheetOpen}
-        enableSubPolygonCapture={subAreasWorkflowEnabled}
+        onCaptureSheetOpenChange={handleCaptureSheetOpenChange}
+        captureTargetHint={
+          vertexCaptureOverride
+            ? `Sub-área: ${vertexCaptureOverride.name}`
+            : undefined
+        }
       />
 
       <ProjectBottomPanel
@@ -478,7 +510,7 @@ export default function ProjectDetailPage() {
         subLayers={data.subLayers}
         pois={data.pois}
         projectPhotos={data.projectPhotos}
-        onCaptureClick={() => setCaptureSheetOpen(true)}
+        onCaptureClick={openMainVertexCapture}
         onClosePolygon={() => void handleClosePolygon()}
         onVertexClick={openVertexDetail}
         closePolygonBusy={closePolygonBusy}
@@ -490,6 +522,9 @@ export default function ProjectDetailPage() {
             onSelectSubPolygon={setSelectedSubPolygonLocalId}
             workflowEnabled={subAreasWorkflowEnabled}
             onWorkflowEnabledChange={setSubAreasWorkflowEnabled}
+            onRequestSubVertexCapture={
+              subAreasWorkflowEnabled ? openSubVertexCapture : undefined
+            }
           />
         }
       />
