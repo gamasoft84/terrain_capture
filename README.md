@@ -61,3 +61,4 @@ Análisis opcional del bundle: `npm run analyze`.
 ## Stack
 
 Next.js 16 (App Router), React 19, Tailwind CSS v4, shadcn/ui (Base UI), Dexie, cliente Supabase, MapLibre, Turf, React PDF; PWA vía `@ducanh2912/next-pwa`.
+# terrain_capture
