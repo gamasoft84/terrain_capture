@@ -17,6 +17,10 @@ export interface GalleryLightboxProps {
   title: string;
   metaLines: string[];
   onClose: () => void;
+  /** Error de subida tras reintentos (sync); botón para volver a encolar. */
+  photoUploadError?: boolean;
+  onRetryPhotoUpload?: () => void;
+  retryPhotoBusy?: boolean;
 }
 
 const MIN = 1;
@@ -28,6 +32,9 @@ export function GalleryLightbox({
   title,
   metaLines,
   onClose,
+  photoUploadError,
+  onRetryPhotoUpload,
+  retryPhotoBusy,
 }: GalleryLightboxProps) {
   const [scale, setScale] = useState(1);
   const [tx, setTx] = useState(0);
@@ -248,6 +255,24 @@ export function GalleryLightbox({
           />
         </div>
       </div>
+
+      {photoUploadError && onRetryPhotoUpload ? (
+        <div className="border-t border-amber-400/30 bg-amber-950/40 px-3 py-2">
+          <p className="text-[11px] text-amber-100/95">
+            No se pudo subir esta foto al servidor (varios intentos fallidos).
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="mt-2 h-8 border-0 bg-white/20 text-white hover:bg-white/30"
+            disabled={retryPhotoBusy}
+            onClick={onRetryPhotoUpload}
+          >
+            {retryPhotoBusy ? "Encolando…" : "Reintentar subida"}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="border-t border-white/10 px-3 py-2 text-[11px] leading-snug text-white/80">
         <p className="mb-1 text-white/60">

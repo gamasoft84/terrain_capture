@@ -21,6 +21,7 @@ import { ProjectGalleryAddSheet } from "@/components/gallery/ProjectGalleryAddSh
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { collectProjectGallery } from "@/lib/gallery/collectProjectGallery";
 import type { ProjectGalleryItem } from "@/lib/gallery/collectProjectGallery";
+import { retryGalleryItemPhotoSync } from "@/lib/db/sync/conflictResolution";
 import { getDb } from "@/lib/db/schema";
 import type { LocalProject } from "@/lib/db/schema";
 
@@ -86,6 +87,7 @@ export default function ProjectGalleryPage() {
     null,
   );
   const [lightboxBlobUrl, setLightboxBlobUrl] = useState<string | null>(null);
+  const [retryPhotoBusy, setRetryPhotoBusy] = useState(false);
 
   const data = useLiveQuery(
     async (): Promise<
@@ -101,10 +103,11 @@ export default function ProjectGalleryPage() {
   );
 
   const filtered = useMemo(() => {
-    if (!data?.items) return [];
-    if (filter === "all") return data.items;
-    return data.items.filter((i) => i.origin === filter);
-  }, [data?.items, filter]);
+    const items = data?.items;
+    if (!items) return [];
+    if (filter === "all") return items;
+    return items.filter((i) => i.origin === filter);
+  }, [data, filter]);
 
   const openLightbox = useCallback((item: ProjectGalleryItem) => {
     setLightboxBlobUrl((prev) => {
@@ -252,6 +255,24 @@ export default function ProjectGalleryPage() {
           title={lightboxItem.originLabel}
           metaLines={lightboxMeta}
           onClose={closeLightbox}
+          photoUploadError={
+            lightboxItem.syncStatus === "error" &&
+            lightboxItem.syncErrorReason === "photo_upload"
+          }
+          retryPhotoBusy={retryPhotoBusy}
+          onRetryPhotoUpload={() => {
+            void (async () => {
+              setRetryPhotoBusy(true);
+              try {
+                await retryGalleryItemPhotoSync(
+                  lightboxItem.origin,
+                  lightboxItem.entityLocalId,
+                );
+              } finally {
+                setRetryPhotoBusy(false);
+              }
+            })();
+          }}
         />
       ) : null}
     </div>

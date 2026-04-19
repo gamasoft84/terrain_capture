@@ -1,6 +1,13 @@
 import type { SyncQueueEntry } from "@/lib/db/schema";
 import { getDb } from "@/lib/db/schema";
 import {
+  MAX_PHOTO_UPLOAD_ATTEMPTS,
+  isPhotoUploadExhaustedError,
+  isRemoteEntityGoneError,
+  type PhotoUploadExhaustedError,
+  type RemoteEntityGoneError,
+} from "@/lib/db/sync/errors";
+import {
   remoteDelete,
   remoteInsertPolygon,
   remoteInsertPoi,
@@ -206,7 +213,7 @@ export class SyncManager {
         this.notify({ phase: "running", processingId: entry.id });
 
         try {
-          await this.applyEntry(client, entry);
+          await this.applyEntryWithConflictHandling(client, entry);
           await getDb().syncQueue.delete(entry.id);
           processed++;
           progressed = true;
@@ -284,6 +291,95 @@ export class SyncManager {
     }
   }
 
+  private async applyEntryWithConflictHandling(
+    client: ReturnType<typeof createBrowserSupabaseClient>,
+    entry: SyncQueueEntry,
+  ): Promise<void> {
+    try {
+      await this.applyEntry(client, entry);
+    } catch (e) {
+      if (isRemoteEntityGoneError(e)) {
+        await this.handleRemoteEntityGone(e);
+        return;
+      }
+      if (isPhotoUploadExhaustedError(e)) {
+        await this.handlePhotoUploadExhausted(e);
+        return;
+      }
+      throw e;
+    }
+  }
+
+  private async handleRemoteEntityGone(err: RemoteEntityGoneError): Promise<void> {
+    const db = getDb();
+    switch (err.entityType) {
+      case "vertex":
+        await db.vertices.update(err.localId, {
+          serverId: undefined,
+          syncConflict: "remote_deleted",
+          syncStatus: "pending",
+          syncErrorReason: undefined,
+        });
+        return;
+      case "poi":
+        await db.pois.update(err.localId, {
+          serverId: undefined,
+          syncConflict: "remote_deleted",
+          syncStatus: "pending",
+          syncErrorReason: undefined,
+        });
+        return;
+      case "polygon":
+        await db.polygons.update(err.localId, {
+          serverId: undefined,
+          syncConflict: "remote_deleted",
+          syncStatus: "pending",
+        });
+        return;
+      case "project":
+        await db.projects.update(err.localId, {
+          serverId: undefined,
+          syncConflict: "remote_deleted",
+          syncStatus: "pending",
+        });
+        return;
+      case "photo":
+        await db.projectPhotos.update(err.localId, {
+          serverId: undefined,
+          syncConflict: "remote_deleted",
+          syncStatus: "pending",
+          syncErrorReason: undefined,
+        });
+        return;
+      default:
+        return;
+    }
+  }
+
+  private async handlePhotoUploadExhausted(
+    err: PhotoUploadExhaustedError,
+  ): Promise<void> {
+    const db = getDb();
+    const payload = {
+      syncStatus: "error" as const,
+      syncErrorReason: "photo_upload" as const,
+      photoUploadAttempts: MAX_PHOTO_UPLOAD_ATTEMPTS,
+    };
+    switch (err.entityType) {
+      case "vertex":
+        await db.vertices.update(err.localId, payload);
+        return;
+      case "poi":
+        await db.pois.update(err.localId, payload);
+        return;
+      case "photo":
+        await db.projectPhotos.update(err.localId, payload);
+        return;
+      default:
+        return;
+    }
+  }
+
   private async applyEntry(
     client: ReturnType<typeof createBrowserSupabaseClient>,
     entry: SyncQueueEntry,
@@ -313,16 +409,26 @@ export class SyncManager {
       if (entry.action === "create") {
         if (row.serverId) {
           await remoteUpdateProject(client, row, row.serverId);
-          await db.projects.update(row.localId, { syncStatus: "synced" });
+          await db.projects.update(row.localId, {
+            syncStatus: "synced",
+            syncConflict: undefined,
+          });
           return;
         }
         const id = await remoteInsertProject(client, row);
-        await db.projects.update(row.localId, { serverId: id, syncStatus: "synced" });
+        await db.projects.update(row.localId, {
+          serverId: id,
+          syncStatus: "synced",
+          syncConflict: undefined,
+        });
         return;
       }
       if (!row.serverId) throw new Error("Proyecto sin serverId para actualizar");
       await remoteUpdateProject(client, row, row.serverId);
-      await db.projects.update(row.localId, { syncStatus: "synced" });
+      await db.projects.update(row.localId, {
+        syncStatus: "synced",
+        syncConflict: undefined,
+      });
       return;
     }
 
@@ -335,16 +441,26 @@ export class SyncManager {
       if (entry.action === "create") {
         if (row.serverId) {
           await remoteUpdatePolygon(client, row, row.serverId);
-          await db.polygons.update(row.localId, { syncStatus: "synced" });
+          await db.polygons.update(row.localId, {
+            syncStatus: "synced",
+            syncConflict: undefined,
+          });
           return;
         }
         const id = await remoteInsertPolygon(client, row, proj.serverId);
-        await db.polygons.update(row.localId, { serverId: id, syncStatus: "synced" });
+        await db.polygons.update(row.localId, {
+          serverId: id,
+          syncStatus: "synced",
+          syncConflict: undefined,
+        });
         return;
       }
       if (!row.serverId) throw new Error("Polígono sin serverId");
       await remoteUpdatePolygon(client, row, row.serverId);
-      await db.polygons.update(row.localId, { syncStatus: "synced" });
+      await db.polygons.update(row.localId, {
+        syncStatus: "synced",
+        syncConflict: undefined,
+      });
       return;
     }
 
@@ -357,19 +473,32 @@ export class SyncManager {
       if (entry.action === "create") {
         if (row.serverId) {
           await remoteUpdateVertex(client, row, row.serverId);
-          await db.vertices.update(row.localId, { syncStatus: "synced" });
+          await db.vertices.update(row.localId, {
+            syncStatus: "synced",
+            syncConflict: undefined,
+            syncErrorReason: undefined,
+            photoUploadAttempts: 0,
+          });
           return;
         }
         const id = await remoteInsertVertex(client, row, poly.serverId);
         await db.vertices.update(row.localId, {
           serverId: id,
           syncStatus: "synced",
+          syncConflict: undefined,
+          syncErrorReason: undefined,
+          photoUploadAttempts: 0,
         });
         return;
       }
       if (!row.serverId) throw new Error("Vértice sin serverId");
       await remoteUpdateVertex(client, row, row.serverId);
-      await db.vertices.update(row.localId, { syncStatus: "synced" });
+      await db.vertices.update(row.localId, {
+        syncStatus: "synced",
+        syncConflict: undefined,
+        syncErrorReason: undefined,
+        photoUploadAttempts: 0,
+      });
       return;
     }
 
@@ -382,16 +511,32 @@ export class SyncManager {
       if (entry.action === "create") {
         if (row.serverId) {
           await remoteUpdatePoi(client, row, row.serverId);
-          await db.pois.update(row.localId, { syncStatus: "synced" });
+          await db.pois.update(row.localId, {
+            syncStatus: "synced",
+            syncConflict: undefined,
+            syncErrorReason: undefined,
+            photoUploadAttempts: 0,
+          });
           return;
         }
         const id = await remoteInsertPoi(client, row, proj.serverId);
-        await db.pois.update(row.localId, { serverId: id, syncStatus: "synced" });
+        await db.pois.update(row.localId, {
+          serverId: id,
+          syncStatus: "synced",
+          syncConflict: undefined,
+          syncErrorReason: undefined,
+          photoUploadAttempts: 0,
+        });
         return;
       }
       if (!row.serverId) throw new Error("POI sin serverId");
       await remoteUpdatePoi(client, row, row.serverId);
-      await db.pois.update(row.localId, { syncStatus: "synced" });
+      await db.pois.update(row.localId, {
+        syncStatus: "synced",
+        syncConflict: undefined,
+        syncErrorReason: undefined,
+        photoUploadAttempts: 0,
+      });
       return;
     }
 
@@ -404,19 +549,32 @@ export class SyncManager {
       if (entry.action === "create") {
         if (row.serverId) {
           await remoteUpdateProjectPhoto(client, row, row.serverId);
-          await db.projectPhotos.update(row.localId, { syncStatus: "synced" });
+          await db.projectPhotos.update(row.localId, {
+            syncStatus: "synced",
+            syncConflict: undefined,
+            syncErrorReason: undefined,
+            photoUploadAttempts: 0,
+          });
           return;
         }
         const id = await remoteInsertProjectPhoto(client, row, proj.serverId);
         await db.projectPhotos.update(row.localId, {
           serverId: id,
           syncStatus: "synced",
+          syncConflict: undefined,
+          syncErrorReason: undefined,
+          photoUploadAttempts: 0,
         });
         return;
       }
       if (!row.serverId) throw new Error("Foto sin serverId");
       await remoteUpdateProjectPhoto(client, row, row.serverId);
-      await db.projectPhotos.update(row.localId, { syncStatus: "synced" });
+      await db.projectPhotos.update(row.localId, {
+        syncStatus: "synced",
+        syncConflict: undefined,
+        syncErrorReason: undefined,
+        photoUploadAttempts: 0,
+      });
       return;
     }
 

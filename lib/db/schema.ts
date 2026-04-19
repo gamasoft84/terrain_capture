@@ -13,6 +13,7 @@ export interface LocalProject {
   createdAt: Date;
   updatedAt: Date;
   syncStatus: "pending" | "synced" | "error";
+  syncConflict?: "remote_deleted";
 }
 
 export interface LocalPolygon {
@@ -28,6 +29,7 @@ export interface LocalPolygon {
   createdAt: Date;
   updatedAt: Date;
   syncStatus: "pending" | "synced" | "error";
+  syncConflict?: "remote_deleted";
 }
 
 export interface LocalVertex {
@@ -53,6 +55,12 @@ export interface LocalVertex {
     | "manual_map"
     | "photo_exif";
   syncStatus: "pending" | "synced" | "error";
+  /** Intentos fallidos de subida a Storage en el último ciclo (máx. 3 antes de `sync_error`). */
+  photoUploadAttempts?: number;
+  /** El servidor ya no tiene la fila; el usuario debe decidir recrear o revisar. */
+  syncConflict?: "remote_deleted";
+  /** Motivo de `syncStatus: "error"` cuando aplica. */
+  syncErrorReason?: "photo_upload";
 }
 
 export interface LocalPOI {
@@ -71,6 +79,9 @@ export interface LocalPOI {
   note?: string;
   capturedAt: Date;
   syncStatus: "pending" | "synced" | "error";
+  photoUploadAttempts?: number;
+  syncConflict?: "remote_deleted";
+  syncErrorReason?: "photo_upload";
 }
 
 export interface LocalProjectPhoto {
@@ -87,6 +98,9 @@ export interface LocalProjectPhoto {
   longitude?: number;
   capturedAt: Date;
   syncStatus: "pending" | "synced" | "error";
+  photoUploadAttempts?: number;
+  syncConflict?: "remote_deleted";
+  syncErrorReason?: "photo_upload";
 }
 
 export interface SyncQueueEntry {

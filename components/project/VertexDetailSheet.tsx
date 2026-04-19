@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import type { LocalVertex } from "@/lib/db/schema";
+import { retryVertexPhotoUploadSync } from "@/lib/db/sync/conflictResolution";
 
 export interface VertexDetailSheetProps {
   vertex: LocalVertex | null;
@@ -34,7 +35,7 @@ export function VertexDetailSheet({
   onSaveNote,
 }: VertexDetailSheetProps) {
   const [note, setNote] = useState(() => vertex?.note ?? "");
-  const [busy, setBusy] = useState<"delete" | "save" | null>(null);
+  const [busy, setBusy] = useState<"delete" | "save" | "retryPhoto" | null>(null);
 
   const blobPreview = useMemo(() => {
     if (!vertex) return null;
@@ -68,6 +69,39 @@ export function VertexDetailSheet({
         </SheetHeader>
 
         <div className="space-y-4 px-4 py-4">
+          {vertex.syncStatus === "error" &&
+          vertex.syncErrorReason === "photo_upload" ? (
+            <div
+              role="alert"
+              className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
+            >
+              <p className="font-medium">No se pudo subir la foto</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Tras varios intentos la sincronización quedó en error. Podés
+                reintentar cuando la red mejore.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-2"
+                disabled={busy != null}
+                onClick={() => {
+                  void (async () => {
+                    setBusy("retryPhoto");
+                    try {
+                      await retryVertexPhotoUploadSync(vertex.localId);
+                    } finally {
+                      setBusy(null);
+                    }
+                  })();
+                }}
+              >
+                {busy === "retryPhoto" ? "Encolando…" : "Reintentar subida"}
+              </Button>
+            </div>
+          ) : null}
+
           {imageSrc ? (
             <div className="border-border relative aspect-video w-full max-h-52 overflow-hidden rounded-md border">
               {/* eslint-disable-next-line @next/next/no-img-element */}

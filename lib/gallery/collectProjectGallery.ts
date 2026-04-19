@@ -19,6 +19,8 @@ export type ProjectGalleryItem = {
   photoBlob?: Blob;
   photoBytes?: ArrayBuffer;
   photoMime?: string;
+  syncStatus?: "pending" | "synced" | "error";
+  syncErrorReason?: "photo_upload";
 };
 
 function hasRenderablePhoto(row: {
@@ -69,6 +71,8 @@ export async function collectProjectGallery(
         photoBlob: v.photoBlob,
         photoBytes: v.photoBytes,
         photoMime: v.photoMime,
+        syncStatus: v.syncStatus,
+        syncErrorReason: v.syncErrorReason,
       });
     });
   }
@@ -89,6 +93,8 @@ export async function collectProjectGallery(
       photoBlob: poi.photoBlob,
       photoBytes: poi.photoBytes,
       photoMime: poi.photoMime,
+      syncStatus: poi.syncStatus,
+      syncErrorReason: poi.syncErrorReason,
     });
   }
 
@@ -110,6 +116,8 @@ export async function collectProjectGallery(
       photoBlob: ph.photoBlob,
       photoBytes: ph.photoBytes,
       photoMime: ph.photoMime,
+      syncStatus: ph.syncStatus,
+      syncErrorReason: ph.syncErrorReason,
     });
   }
 

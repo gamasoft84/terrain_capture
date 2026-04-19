@@ -2,6 +2,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { LastProjectRouteTracker } from "@/components/layout/LastProjectRouteTracker";
 import { TopBar } from "@/components/layout/TopBar";
 import { OfflineBanner } from "@/components/sync/OfflineBanner";
+import { SyncConflictGate } from "@/components/sync/SyncConflictGate";
 import { SyncQueueProvider } from "@/components/sync/SyncQueueProvider";
 import { OnlineStatusBridge } from "@/lib/context/OnlineStatusBridge";
 import { MapVertexDragProvider } from "@/components/providers/MapVertexDragPreference";
@@ -15,6 +16,7 @@ export default function AppShellLayout({
     <MapVertexDragProvider>
       <OnlineStatusBridge>
         <SyncQueueProvider>
+          <SyncConflictGate />
           <LastProjectRouteTracker />
           <div className="bg-background flex min-h-dvh flex-col">
             <div className="bg-background sticky top-0 z-40 flex flex-col">

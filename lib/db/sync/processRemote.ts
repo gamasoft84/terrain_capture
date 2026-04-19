@@ -8,8 +8,23 @@ import type {
   LocalProjectPhoto,
   LocalVertex,
 } from "@/lib/db/schema";
+import {
+  MAX_PHOTO_UPLOAD_ATTEMPTS,
+  PhotoUploadExhaustedError,
+  RemoteEntityGoneError,
+} from "@/lib/db/sync/errors";
 import { centroidFromVerticesEwkt, pointEwkt, polygonFromVerticesEwkt } from "@/lib/db/sync/geo";
 import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
+
+function assertUpdateRows(
+  data: { id: string }[] | null,
+  entityType: RemoteEntityGoneError["entityType"],
+  localId: string,
+): void {
+  if (!data?.length) {
+    throw new RemoteEntityGoneError(entityType, localId);
+  }
+}
 
 async function listVerticesByPolygonLocal(
   polygonLocalId: string,
@@ -54,7 +69,7 @@ export async function remoteUpdateProject(
   row: LocalProject,
   serverId: string,
 ): Promise<void> {
-  const { error } = await client
+  const { data, error } = await client
     .from("projects")
     .update({
       name: row.name,
@@ -65,8 +80,10 @@ export async function remoteUpdateProject(
       status: row.status,
       updated_at: iso(row.updatedAt),
     })
-    .eq("id", serverId);
+    .eq("id", serverId)
+    .select("id");
   if (error) throw error;
+  assertUpdateRows(data as { id: string }[] | null, "project", row.localId);
 }
 
 export async function remoteInsertPolygon(
@@ -113,7 +130,7 @@ export async function remoteUpdatePolygon(
   const centroidWkt =
     row.isClosed && verts.length >= 3 ? centroidFromVerticesEwkt(verts) : null;
 
-  const { error } = await client
+  const { data, error } = await client
     .from("polygons")
     .update({
       name: row.name,
@@ -125,8 +142,10 @@ export async function remoteUpdatePolygon(
       is_closed: row.isClosed,
       updated_at: iso(row.updatedAt),
     })
-    .eq("id", serverId);
+    .eq("id", serverId)
+    .select("id");
   if (error) throw error;
+  assertUpdateRows(data as { id: string }[] | null, "polygon", row.localId);
 }
 
 async function uploadVertexPhotoIfNeeded(
@@ -139,13 +158,29 @@ async function uploadVertexPhotoIfNeeded(
   if (!blob || blob.size === 0) return vertex.photoUrl;
 
   const path = `${projectLocalId}/vertices/${vertex.localId}.jpg`;
-  const { publicUrl } = await uploadToProjectPhotosBucket(
-    client,
-    path,
-    blob,
-    blob.type || vertex.photoMime || "image/jpeg",
-  );
-  return publicUrl;
+  const mime = blob.type || vertex.photoMime || "image/jpeg";
+
+  for (let attempt = 1; attempt <= MAX_PHOTO_UPLOAD_ATTEMPTS; attempt++) {
+    try {
+      const { publicUrl } = await uploadToProjectPhotosBucket(
+        client,
+        path,
+        blob,
+        mime,
+      );
+      await getDb().vertices.update(vertex.localId, {
+        photoUploadAttempts: 0,
+      });
+      return publicUrl;
+    } catch {
+      await getDb().vertices.update(vertex.localId, {
+        photoUploadAttempts: attempt,
+      });
+      if (attempt === MAX_PHOTO_UPLOAD_ATTEMPTS) {
+        throw new PhotoUploadExhaustedError("vertex", vertex.localId);
+      }
+    }
+  }
 }
 
 async function resolvePolygonProjectLocalId(
@@ -212,7 +247,7 @@ export async function remoteUpdateVertex(
 
   const coordEwkt = pointEwkt(vertex.longitude, vertex.latitude);
 
-  const { error } = await client
+  const { data, error } = await client
     .from("vertices")
     .update({
       order_index: vertex.orderIndex,
@@ -226,8 +261,10 @@ export async function remoteUpdateVertex(
       note: vertex.note ?? null,
       capture_method: vertex.captureMethod,
     })
-    .eq("id", serverId);
+    .eq("id", serverId)
+    .select("id");
   if (error) throw error;
+  assertUpdateRows(data as { id: string }[] | null, "vertex", vertex.localId);
 }
 
 async function uploadPoiPhotoIfNeeded(
@@ -240,13 +277,27 @@ async function uploadPoiPhotoIfNeeded(
   if (!blob || blob.size === 0) return poi.photoUrl;
 
   const path = `${projectLocalId}/pois/${poi.localId}.jpg`;
-  const { publicUrl } = await uploadToProjectPhotosBucket(
-    client,
-    path,
-    blob,
-    blob.type || poi.photoMime || "image/jpeg",
-  );
-  return publicUrl;
+  const mime = blob.type || poi.photoMime || "image/jpeg";
+
+  for (let attempt = 1; attempt <= MAX_PHOTO_UPLOAD_ATTEMPTS; attempt++) {
+    try {
+      const { publicUrl } = await uploadToProjectPhotosBucket(
+        client,
+        path,
+        blob,
+        mime,
+      );
+      await getDb().pois.update(poi.localId, { photoUploadAttempts: 0 });
+      return publicUrl;
+    } catch {
+      await getDb().pois.update(poi.localId, {
+        photoUploadAttempts: attempt,
+      });
+      if (attempt === MAX_PHOTO_UPLOAD_ATTEMPTS) {
+        throw new PhotoUploadExhaustedError("poi", poi.localId);
+      }
+    }
+  }
 }
 
 export async function remoteInsertPoi(
@@ -306,7 +357,7 @@ export async function remoteUpdatePoi(
 
   const coordEwkt = pointEwkt(poi.longitude, poi.latitude);
 
-  const { error } = await client
+  const { data, error } = await client
     .from("points_of_interest")
     .update({
       label: poi.label,
@@ -318,8 +369,10 @@ export async function remoteUpdatePoi(
       note: poi.note ?? null,
       captured_at: iso(poi.capturedAt),
     })
-    .eq("id", serverId);
+    .eq("id", serverId)
+    .select("id");
   if (error) throw error;
+  assertUpdateRows(data as { id: string }[] | null, "poi", poi.localId);
 }
 
 async function uploadProjectPhotoBlob(
@@ -332,13 +385,30 @@ async function uploadProjectPhotoBlob(
     throw new Error("Foto de proyecto sin bytes locales");
   }
   const path = `${projectLocalId}/gallery/${photo.localId}.jpg`;
-  const { publicUrl } = await uploadToProjectPhotosBucket(
-    client,
-    path,
-    blob,
-    blob.type || photo.photoMime || "image/jpeg",
-  );
-  return publicUrl;
+  const mime = blob.type || photo.photoMime || "image/jpeg";
+
+  for (let attempt = 1; attempt <= MAX_PHOTO_UPLOAD_ATTEMPTS; attempt++) {
+    try {
+      const { publicUrl } = await uploadToProjectPhotosBucket(
+        client,
+        path,
+        blob,
+        mime,
+      );
+      await getDb().projectPhotos.update(photo.localId, {
+        photoUploadAttempts: 0,
+      });
+      return publicUrl;
+    } catch {
+      await getDb().projectPhotos.update(photo.localId, {
+        photoUploadAttempts: attempt,
+      });
+      if (attempt === MAX_PHOTO_UPLOAD_ATTEMPTS) {
+        throw new PhotoUploadExhaustedError("photo", photo.localId);
+      }
+    }
+  }
+  throw new PhotoUploadExhaustedError("photo", photo.localId);
 }
 
 export async function remoteInsertProjectPhoto(
@@ -346,7 +416,7 @@ export async function remoteInsertProjectPhoto(
   photo: LocalProjectPhoto,
   projectRemoteId: string,
 ): Promise<string> {
-  let photoUrl = photo.photoUrl?.startsWith("http")
+  const photoUrl = photo.photoUrl?.startsWith("http")
     ? photo.photoUrl
     : await uploadProjectPhotoBlob(client, photo.projectLocalId, photo);
 
@@ -377,7 +447,7 @@ export async function remoteUpdateProjectPhoto(
   photo: LocalProjectPhoto,
   serverId: string,
 ): Promise<void> {
-  let photoUrl = photo.photoUrl?.startsWith("http")
+  const photoUrl = photo.photoUrl?.startsWith("http")
     ? photo.photoUrl
     : await uploadProjectPhotoBlob(client, photo.projectLocalId, photo);
 
@@ -385,7 +455,7 @@ export async function remoteUpdateProjectPhoto(
     await getDb().projectPhotos.update(photo.localId, { photoUrl });
   }
 
-  const { error } = await client
+  const { data, error } = await client
     .from("project_photos")
     .update({
       photo_url: photoUrl,
@@ -395,8 +465,10 @@ export async function remoteUpdateProjectPhoto(
       longitude: photo.longitude ?? null,
       captured_at: iso(photo.capturedAt),
     })
-    .eq("id", serverId);
+    .eq("id", serverId)
+    .select("id");
   if (error) throw error;
+  assertUpdateRows(data as { id: string }[] | null, "photo", photo.localId);
 }
 
 export async function remoteDelete(
