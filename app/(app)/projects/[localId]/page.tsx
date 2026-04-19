@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useMemo, useState } from "react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -24,6 +24,7 @@ import {
   useSeedSubAreasWorkflow,
 } from "@/components/project/SubPolygonWorkflow";
 import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
+import { ProjectMapExportMenu } from "@/components/project/ProjectMapExportMenu";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import {
   listSubPolygonsByProject,
@@ -45,12 +46,6 @@ import type {
   LocalProjectPhoto,
   LocalVertex,
 } from "@/lib/db/schema";
-import { downloadProjectCsv } from "@/lib/geo/csv";
-import { downloadProjectGeoJson } from "@/lib/geo/geojson";
-import {
-  downloadProjectKml,
-  loadProjectForKmlExport,
-} from "@/lib/geo/kml";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
   pathExtensionForImageBlob,
@@ -85,10 +80,6 @@ export default function ProjectDetailPage() {
   const [selectedPoi, setSelectedPoi] = useState<LocalPOI | null>(null);
   const [subAreasWorkflowEnabled, setSubAreasWorkflowEnabled] =
     useState(false);
-  const [kmlBusy, setKmlBusy] = useState(false);
-  const [geoJsonBusy, setGeoJsonBusy] = useState(false);
-  const [csvBusy, setCsvBusy] = useState(false);
-
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
       try {
@@ -364,67 +355,8 @@ export default function ProjectDetailPage() {
               </p>
             ) : null}
           </div>
-          <div className="pointer-events-auto flex shrink-0 gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shadow-md"
-              disabled={kmlBusy || geoJsonBusy || csvBusy}
-              onClick={() => {
-                void (async () => {
-                  setKmlBusy(true);
-                  try {
-                    const input = await loadProjectForKmlExport(localId);
-                    if (input) await downloadProjectKml(input);
-                  } finally {
-                    setKmlBusy(false);
-                  }
-                })();
-              }}
-            >
-              {kmlBusy ? "Exportando…" : "KML"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shadow-md"
-              disabled={kmlBusy || geoJsonBusy || csvBusy}
-              onClick={() => {
-                void (async () => {
-                  setGeoJsonBusy(true);
-                  try {
-                    const input = await loadProjectForKmlExport(localId);
-                    if (input) await downloadProjectGeoJson(input);
-                  } finally {
-                    setGeoJsonBusy(false);
-                  }
-                })();
-              }}
-            >
-              {geoJsonBusy ? "Exportando…" : "GeoJSON"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shadow-md"
-              disabled={kmlBusy || geoJsonBusy || csvBusy}
-              onClick={() => {
-                void (async () => {
-                  setCsvBusy(true);
-                  try {
-                    const input = await loadProjectForKmlExport(localId);
-                    if (input) await downloadProjectCsv(input);
-                  } finally {
-                    setCsvBusy(false);
-                  }
-                })();
-              }}
-            >
-              {csvBusy ? "Exportando…" : "CSV"}
-            </Button>
+          <div className="pointer-events-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <ProjectMapExportMenu projectLocalId={localId} />
             <Link
               href={`/projects/${data.project.localId}/report`}
               className={cn(
