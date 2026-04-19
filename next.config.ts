@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import withPWAInit from "@ducanh2912/next-pwa";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,4 +26,42 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: projectRoot,
 };
 
-export default nextConfig;
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: true,
+  extendDefaultRuntimeCaching: true,
+  fallbacks: {
+    document: "/~offline",
+  },
+  workboxOptions: {
+    runtimeCaching: [
+      {
+        urlPattern: /^https:\/\/server\.arcgisonline\.com\/.*/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "terrain-esri-tiles",
+          expiration: {
+            maxEntries: 2000,
+            maxAgeSeconds: 60 * 60 * 24 * 30,
+          },
+        },
+      },
+      {
+        urlPattern: ({ url }: { url: URL }) =>
+          url.hostname.endsWith("supabase.co") &&
+          url.pathname.includes("/storage/"),
+        handler: "CacheFirst",
+        options: {
+          cacheName: "terrain-supabase-storage",
+          expiration: {
+            maxEntries: 500,
+            maxAgeSeconds: 60 * 60 * 24 * 7,
+          },
+        },
+      },
+    ],
+  },
+});
+
+export default withPWA(nextConfig);

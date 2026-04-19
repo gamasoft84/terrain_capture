@@ -8,10 +8,12 @@
     "dev:turbo": "next dev",
     "build:turbo": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "pwa:icons": "node scripts/generate-pwa-assets.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^5.2.2",
     "@mapbox/mapbox-gl-draw": "^1.4.3",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -47,6 +49,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
