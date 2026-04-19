@@ -11,8 +11,12 @@ import {
 } from "@/lib/report/config";
 
 const W = 1080;
+/** Alto mínimo historia vertical; el contenido puede crecer para no recortar galería/pie. */
 const H = 1920;
-const MAP_H = Math.round(H * 0.4);
+/** ~26% del lienzo: deja espacio para stats + galería 2×2 + disclaimer + footer sin overflow. */
+const MAP_H = Math.round(H * 0.26);
+/** Filas de galería compactas para caber en ~1080×1920 de forma cómoda. */
+const GALLERY_CELL_H = 188;
 
 const COLORS = {
   jungle: "#022c22",
@@ -79,9 +83,10 @@ export function TerrainReportPngTemplate({
     <div
       style={{
         width: W,
-        height: H,
+        minHeight: H,
+        height: "auto",
         boxSizing: "border-box",
-        overflow: "hidden",
+        overflow: "visible",
         display: "flex",
         flexDirection: "column",
         fontFamily:
@@ -154,12 +159,11 @@ export function TerrainReportPngTemplate({
 
       <div
         style={{
-          flex: 1,
-          padding: "36px 44px 28px",
+          flexShrink: 0,
+          padding: "28px 36px 32px",
           display: "flex",
           flexDirection: "column",
-          gap: 20,
-          minHeight: 0,
+          gap: 14,
         }}
       >
         <div>
@@ -168,12 +172,11 @@ export function TerrainReportPngTemplate({
               fontSize: 26,
               fontWeight: 700,
               color: COLORS.amber,
-              letterSpacing: 0.5,
-              textTransform: "uppercase",
+              letterSpacing: "0.06em",
               marginBottom: 8,
             }}
           >
-            TerrainCapture
+            Terrain Capture
           </div>
           <div
             style={{
@@ -200,29 +203,29 @@ export function TerrainReportPngTemplate({
 
         <div
           style={{
-            marginTop: 8,
-            padding: "28px 24px",
-            borderRadius: 20,
+            marginTop: 4,
+            padding: "20px 20px",
+            borderRadius: 18,
             background: `linear-gradient(135deg, ${COLORS.cream} 0%, #fde68a 100%)`,
-            border: `4px solid ${COLORS.amber}`,
-            boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
+            border: `3px solid ${COLORS.amber}`,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.3)",
           }}
         >
           <div
             style={{
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: 800,
               color: COLORS.ink,
               letterSpacing: 2,
               textAlign: "center",
-              marginBottom: 12,
+              marginBottom: 8,
             }}
           >
             ÁREA TOTAL
           </div>
           <div
             style={{
-              fontSize: 96,
+              fontSize: 80,
               fontWeight: 900,
               color: COLORS.emeraldDeep,
               textAlign: "center",
@@ -285,7 +288,7 @@ export function TerrainReportPngTemplate({
           ))}
         </div>
 
-        <div style={{ marginTop: 4, flex: 1, minHeight: 0 }}>
+        <div style={{ marginTop: 4, flexShrink: 0 }}>
           <div
             style={{
               fontSize: 20,
@@ -301,15 +304,17 @@ export function TerrainReportPngTemplate({
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gridTemplateRows: "1fr 1fr",
-              gap: 14,
-              height: 340,
+              gridTemplateRows: `${GALLERY_CELL_H}px ${GALLERY_CELL_H}px`,
+              gap: 10,
             }}
           >
             {gallery.map((g, i) => (
               <div
                 key={i}
                 style={{
+                  width: "100%",
+                  height: "100%",
+                  minHeight: 0,
                   borderRadius: 14,
                   overflow: "hidden",
                   backgroundColor: "rgba(0,0,0,0.25)",
@@ -344,10 +349,15 @@ export function TerrainReportPngTemplate({
         {s.disclaimer ? (
           <div
             style={{
-              fontSize: 14,
-              lineHeight: 1.35,
-              color: "rgba(236,253,245,0.78)",
-              marginTop: 4,
+              flexShrink: 0,
+              marginTop: 20,
+              padding: "14px 16px",
+              borderRadius: 12,
+              fontSize: 13,
+              lineHeight: 1.4,
+              color: "rgba(236,253,245,0.92)",
+              backgroundColor: "rgba(0,0,0,0.28)",
+              border: "1px solid rgba(251,191,36,0.25)",
             }}
           >
             {LEGAL_DISCLAIMER_ES}
@@ -356,13 +366,14 @@ export function TerrainReportPngTemplate({
 
         <div
           style={{
-            marginTop: "auto",
-            paddingTop: 16,
+            flexShrink: 0,
+            marginTop: 16,
+            paddingTop: 18,
             borderTop: "2px solid rgba(251,191,36,0.35)",
             display: "flex",
             flexDirection: "row",
-            alignItems: "center",
-            gap: 16,
+            alignItems: "flex-start",
+            gap: 14,
           }}
         >
           <div
@@ -382,19 +393,33 @@ export function TerrainReportPngTemplate({
           >
             G
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
             {s.footer ? (
               <>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#fff" }}>
+                <div
+                  style={{
+                    fontSize: 21,
+                    fontWeight: 800,
+                    color: "#fff",
+                    lineHeight: 1.25,
+                  }}
+                >
                   {GAMASOFT_FOOTER_LINES[0]}
                 </div>
-                <div style={{ fontSize: 18, color: COLORS.muted }}>
+                <div
+                  style={{
+                    fontSize: 17,
+                    color: COLORS.muted,
+                    marginTop: 6,
+                    lineHeight: 1.35,
+                  }}
+                >
                   {GAMASOFT_FOOTER_LINES[1]}
                 </div>
               </>
             ) : (
               <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.muted }}>
-                TerrainCapture
+                Terrain Capture
               </div>
             )}
           </div>
@@ -484,8 +509,6 @@ export function ReportPngExportHost({
           pixelRatio: 1,
           cacheBust: true,
           backgroundColor: COLORS.jungle,
-          width: W,
-          height: H,
         });
         const res = await fetch(dataUrl);
         const blob = await res.blob();
@@ -502,10 +525,14 @@ export function ReportPngExportHost({
 
   return (
     <div
-      className="pointer-events-none fixed top-0 left-[-99999px] z-[401] overflow-hidden"
+      className="pointer-events-none fixed top-0 left-[-99999px] z-[401]"
+      style={{ overflow: "visible" }}
       aria-hidden
     >
-      <div ref={wrapRef}>
+      <div
+        ref={wrapRef}
+        style={{ width: W, display: "inline-block", verticalAlign: "top" }}
+      >
         <TerrainReportPngTemplate input={input} />
       </div>
     </div>
