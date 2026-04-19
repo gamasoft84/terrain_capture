@@ -254,7 +254,7 @@ export function SubPolygonManager({
                         onClick={() => onRequestSubVertexCapture(p)}
                       >
                         <Camera className="size-3.5" aria-hidden />
-                        GPS
+                        Capturar
                       </Button>
                     ) : null}
                     <Button

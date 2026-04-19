@@ -66,7 +66,7 @@ export function SubPolygonWorkflow({
             {subPolygons.length}
           </span>{" "}
           sub-área(s). Activá la opción de arriba para gestionarlas o usar
-          «GPS» en cada sub-área.
+          «Capturar» en cada sub-área.
         </p>
       ) : null}
 
