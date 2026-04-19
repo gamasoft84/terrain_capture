@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +18,7 @@ import { CaptureButton } from "@/components/capture/CaptureButton";
 import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
 import { POIDetailSheet } from "@/components/project/POIDetailSheet";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
+import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import { ProjectBottomPanel } from "@/components/project/ProjectBottomPanel";
 import {
   SubPolygonWorkflow,
@@ -67,6 +68,12 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const localId = typeof params.localId === "string" ? params.localId : "";
   const { allowVertexMapDrag } = useMapVertexDrag();
+  const highAccuracyGpsDesired = useHighAccuracyGpsDesired();
+
+  /** Centro del mapa en proyecto vacío (solo vértices): ubicación actual del dispositivo. */
+  const [emptyProjectUserCenter, setEmptyProjectUserCenter] = useState<
+    [number, number] | null
+  >(null);
 
   const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [vertexSheetOpen, setVertexSheetOpen] = useState(false);
@@ -121,6 +128,45 @@ export default function ProjectDetailPage() {
     },
     [localId],
   );
+
+  useEffect(() => {
+    setEmptyProjectUserCenter(null);
+  }, [localId]);
+
+  const isEmptyProjectMap = useMemo(() => {
+    if (!data?.main) return false;
+    return (
+      data.vertices.length === 0 &&
+      data.pois.length === 0 &&
+      data.subLayers.every((s) => s.vertices.length === 0)
+    );
+  }, [data?.main, data?.vertices, data?.pois, data?.subLayers]);
+
+  useEffect(() => {
+    if (!isEmptyProjectMap) return;
+    let cancelled = false;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        setEmptyProjectUserCenter([
+          pos.coords.longitude,
+          pos.coords.latitude,
+        ]);
+      },
+      () => {
+        /* sin permiso o error: queda el centro por defecto del mapa */
+      },
+      {
+        enableHighAccuracy: highAccuracyGpsDesired,
+        maximumAge: 120_000,
+        timeout: 20_000,
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [isEmptyProjectMap, highAccuracyGpsDesired]);
 
   useSeedSubAreasWorkflow(
     data === undefined ? undefined : data.subLayers.length,
@@ -357,6 +403,8 @@ export default function ProjectDetailPage() {
           }
           onPoiMarkerClick={openPoiDetail}
           showUserLocation
+          initialCenter={emptyProjectUserCenter ?? undefined}
+          initialZoom={emptyProjectUserCenter ? 16 : undefined}
           allowVertexDrag={allowVertexMapDrag}
           resolveVertexDragTarget={resolveVertexDragTarget}
         />

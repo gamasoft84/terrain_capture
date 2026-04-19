@@ -558,6 +558,17 @@ export default function MapCanvasInner({
         edgeDistanceMarkersRef.current,
         map.getZoom(),
       );
+      const { initialCenter: ic, initialZoom: iz } = mountOptsRef.current;
+      if (!minimalChromeRef.current) {
+        map.flyTo({
+          center: ic,
+          zoom: iz,
+          duration: 550,
+          essential: true,
+        });
+      } else {
+        map.jumpTo({ center: ic, zoom: iz });
+      }
       return;
     }
 
@@ -855,6 +866,8 @@ export default function MapCanvasInner({
     selectedPoiLocalId,
     resolveVertexDragTarget,
     syncMap,
+    initialCenter,
+    initialZoom,
   ]);
 
   return (
