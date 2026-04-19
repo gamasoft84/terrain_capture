@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MapPin, Wifi, WifiOff } from "lucide-react";
+import { useSharedOnlineStatus } from "@/lib/context/OnlineStatusBridge";
 
 function accuracyLevel(
   m: number | null,
@@ -31,22 +32,9 @@ function accuracyColor(
 }
 
 export function TopBar() {
-  // SSR and the first client paint must match; sync real status after mount.
-  const [online, setOnline] = useState(true);
+  const { online } = useSharedOnlineStatus();
   const [accuracyM, setAccuracyM] = useState<number | null>(null);
   const [batteryPct, setBatteryPct] = useState<number | null>(null);
-
-  useEffect(() => {
-    setOnline(navigator.onLine);
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
-    };
-  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -86,7 +74,7 @@ export function TopBar() {
         </span>
       </div>
       <div className="text-muted-foreground flex items-center gap-3 text-xs">
-        <span className="flex items-center gap-1" title="Conexión (placeholder)">
+        <span className="flex items-center gap-1" title="Conexión (navigator + Supabase REST)">
           {online ? (
             <Wifi className="text-primary size-4" aria-hidden />
           ) : (
