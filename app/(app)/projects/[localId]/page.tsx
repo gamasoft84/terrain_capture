@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useMemo, useState } from "react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -45,6 +45,10 @@ import type {
   LocalProjectPhoto,
   LocalVertex,
 } from "@/lib/db/schema";
+import {
+  downloadProjectKml,
+  loadProjectForKmlExport,
+} from "@/lib/geo/kml";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
 
@@ -76,6 +80,7 @@ export default function ProjectDetailPage() {
   const [selectedPoi, setSelectedPoi] = useState<LocalPOI | null>(null);
   const [subAreasWorkflowEnabled, setSubAreasWorkflowEnabled] =
     useState(false);
+  const [kmlBusy, setKmlBusy] = useState(false);
 
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
@@ -353,6 +358,26 @@ export default function ProjectDetailPage() {
             ) : null}
           </div>
           <div className="pointer-events-auto flex shrink-0 gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shadow-md"
+              disabled={kmlBusy}
+              onClick={() => {
+                void (async () => {
+                  setKmlBusy(true);
+                  try {
+                    const input = await loadProjectForKmlExport(localId);
+                    if (input) await downloadProjectKml(input);
+                  } finally {
+                    setKmlBusy(false);
+                  }
+                })();
+              }}
+            >
+              {kmlBusy ? "Exportando…" : "KML"}
+            </Button>
             <Link
               href={`/projects/${data.project.localId}/gallery`}
               className={cn(
