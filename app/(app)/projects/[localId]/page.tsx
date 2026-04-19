@@ -423,6 +423,15 @@ export default function ProjectDetailPage() {
               {csvBusy ? "Exportando…" : "CSV"}
             </Button>
             <Link
+              href={`/projects/${data.project.localId}/report`}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md",
+              )}
+            >
+              Reporte
+            </Link>
+            <Link
               href={`/projects/${data.project.localId}/gallery`}
               className={cn(
                 buttonVariants({ variant: "secondary", size: "sm" }),
