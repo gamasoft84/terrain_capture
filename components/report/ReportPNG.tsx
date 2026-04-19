@@ -529,8 +529,13 @@ export function ReportPngExportHost({
       await Promise.all(imgs.map((img) => awaitImgDecoded(img)));
       try {
         const { toPng } = await import("html-to-image");
+        // html-to-image usa clientWidth/clientHeight; con flex + fixed inset-0 y
+        // align-items: stretch el bloque puede medir solo la altura del viewport
+        // y recortar el PNG. scrollWidth/scrollHeight reflejan el contenido completo.
         const dataUrl = await toPng(el, {
           pixelRatio: 1,
+          width: el.scrollWidth,
+          height: el.scrollHeight,
           cacheBust: true,
           backgroundColor: COLORS.jungle,
           skipFonts: true,
@@ -550,7 +555,7 @@ export function ReportPngExportHost({
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[401] flex justify-center overflow-hidden"
+      className="pointer-events-none fixed inset-0 z-[401] flex items-start justify-center overflow-visible"
       style={{
         opacity: 0.02,
         visibility: "visible",
