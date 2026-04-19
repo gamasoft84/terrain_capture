@@ -131,3 +131,8 @@
     @apply font-sans;
   }
 }
+
+/* MapLibre: no superponer zoom / ubicación con la barra flotante del proyecto */
+.terrain-map-canvas-root .maplibregl-ctrl-top-right {
+  top: max(5.25rem, calc(env(safe-area-inset-top, 0px) + 4rem));
+}

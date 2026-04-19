@@ -874,7 +874,7 @@ export default function MapCanvasInner({
     <div
       ref={wrapperRef}
       className={cn(
-        "relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg",
+        "terrain-map-canvas-root relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg",
         className,
       )}
     >
