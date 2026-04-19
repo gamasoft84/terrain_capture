@@ -11,10 +11,35 @@ import { Label } from "@/components/ui/label";
 import { OfflineMapDownloader } from "@/components/map/OfflineMapDownloader";
 import { FieldTestChecklist } from "@/components/settings/FieldTestChecklist";
 import { SyncSettingsActions } from "@/components/settings/SyncSettingsActions";
+import { useMapEngine } from "@/components/providers/MapEnginePreference";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { useBatterySaverControls } from "@/lib/hooks/useBatterySaver";
+import type { MapEngineId } from "@/lib/settings/mapEngine";
+
+const MAP_ENGINE_OPTIONS: { id: MapEngineId; title: string; detail: string }[] =
+  [
+    {
+      id: "mapbox",
+      title: "Mapbox",
+      detail:
+        "Satélite + calles (estilo Mapbox). Requiere NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN.",
+    },
+    {
+      id: "google",
+      title: "Google Maps",
+      detail:
+        "Vista híbrida (satélite + etiquetas). Requiere NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.",
+    },
+    {
+      id: "maplibre",
+      title: "MapLibre + ESRI (inicial del spec)",
+      detail:
+        "Solo imagen satelital pública; no hace falta clave de pago. Alineado con el enfoque original del proyecto.",
+    },
+  ];
 
 export default function SettingsPage() {
+  const { mapEngine, setMapEngine } = useMapEngine();
   const { allowVertexMapDrag, setAllowVertexMapDrag } = useMapVertexDrag();
   const { batterySaverEnabled, setBatterySaverEnabled } =
     useBatterySaverControls();
@@ -42,6 +67,40 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="border-border space-y-3 rounded-lg border p-4">
+            <div className="space-y-1">
+              <p className="text-base font-medium">Motor del mapa</p>
+              <p className="text-muted-foreground text-sm leading-snug">
+                Elige el proveedor para la vista de proyecto y el mapa del
+                informe PDF. Los cambios se aplican al instante.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {MAP_ENGINE_OPTIONS.map((opt) => (
+                <label
+                  key={opt.id}
+                  className="border-border hover:bg-muted/40 flex cursor-pointer gap-3 rounded-lg border p-3"
+                >
+                  <input
+                    type="radio"
+                    name="map-engine"
+                    checked={mapEngine === opt.id}
+                    onChange={() => setMapEngine(opt.id)}
+                    className="border-input text-primary focus-visible:ring-ring mt-1 size-4 shrink-0"
+                  />
+                  <span>
+                    <span className="text-foreground font-medium">
+                      {opt.title}
+                    </span>
+                    <span className="text-muted-foreground block text-xs leading-snug">
+                      {opt.detail}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="border-border space-y-3 rounded-lg border p-4">
             <div className="space-y-1">
               <Label

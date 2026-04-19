@@ -11,12 +11,13 @@ export type ReportPdfMapHostProps = {
   polygonIsClosed: boolean;
   subLayers: SubPolygonMapLayer[];
   pois: LocalPOI[];
-  /** Devuelve data URL PNG del canvas Mapbox (puede ser vacío si falla la captura). */
+  /** Devuelve data URL PNG del mapa según motor en Ajustes (puede ser vacío si falla la captura). */
   onCaptured: (dataUrl: string) => void;
 };
 
 /**
- * Mapa fuera de pantalla para capturar el polígono en el PDF (canvas WebGL tras idle).
+ * Mapa fuera de pantalla para capturar el polígono en el PDF (idle + captura Mapbox/WebGL,
+ * html-to-image para Google / MapLibre ESRI según motor en Ajustes).
  */
 export function ReportPdfMapHost({
   sessionId,
@@ -40,7 +41,7 @@ export function ReportPdfMapHost({
       aria-hidden
     >
       {/*
-        Captura del canvas Mapbox tras idle (see MapCanvasInner).
+        Captura tras idle — ver MapCanvasMapbox / MapCanvasGoogle / MapCanvasMapLibre.
       */}
       <MapCanvas
         className="h-[480px] min-h-[480px] w-full"

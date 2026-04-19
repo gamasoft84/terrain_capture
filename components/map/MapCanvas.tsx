@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { MapCanvasProps } from "./MapCanvasInner";
+import type { MapCanvasProps } from "./mapCanvasShared";
 
 const MapCanvasInner = dynamic(() => import("./MapCanvasInner"), {
   ssr: false,
@@ -14,7 +14,7 @@ const MapCanvasInner = dynamic(() => import("./MapCanvasInner"), {
   ),
 });
 
-export type { MapCanvasProps, SubPolygonMapLayer } from "./MapCanvasInner";
+export type { MapCanvasProps, SubPolygonMapLayer } from "./mapCanvasShared";
 
 export default function MapCanvas(props: MapCanvasProps) {
   return <MapCanvasInner {...props} />;

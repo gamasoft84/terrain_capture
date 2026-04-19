@@ -15,7 +15,8 @@ Variables que la app espera (ver [`.env.local.example`](../.env.local.example)):
 
 | Variable | Uso |
 |----------|-----|
-| `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` | [Mapbox access token](https://docs.mapbox.com/help/getting-started/access-tokens/): mapa del proyecto (estilo satélite + calles). Restringir por URL en el panel de Mapbox. También se acepta `NEXT_PUBLIC_MAPBOX_TOKEN` como alias. |
+| `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` | [Mapbox access token](https://docs.mapbox.com/help/getting-started/access-tokens/): motor Mapbox (satélite + calles). Restringir por URL. Alias: `NEXT_PUBLIC_MAPBOX_TOKEN`. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | [Maps JavaScript API](https://developers.google.com/maps/documentation/javascript): motor Google (híbrido). Opcional si no usas ese modo en Ajustes. |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública (cliente / PWA) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Solo servidor u operaciones admin; **no** exponer como `NEXT_PUBLIC_` |
