@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { getDb } from "@/lib/db/schema";
 import type { LocalPOI } from "@/lib/db/schema";
+import { syncManager } from "@/lib/db/sync";
 import { logDexieBlobFailure } from "@/lib/db/logDexieBlobFailure";
 import { preparePhotoBlobForDexie } from "@/lib/db/preparePhotoBlobForDexie";
 
@@ -79,6 +80,8 @@ export async function createPOI(
     throw err;
   }
 
+  void syncManager.enqueueCreate("poi", localId, {});
+
   return localId;
 }
 
@@ -122,7 +125,11 @@ export async function updatePOI(
     delete rest.photoBlob;
     try {
       await db.pois.where("localId").equals(localId).modify((row) => {
-        Object.assign(row, rest, { photoBytes, photoMime });
+        Object.assign(row, rest, {
+          photoBytes,
+          photoMime,
+          syncStatus: "pending",
+        });
         delete row.photoBlob;
       });
     } catch (err) {
@@ -134,11 +141,15 @@ export async function updatePOI(
       });
       throw err;
     }
+    void syncManager.enqueueUpdate("poi", localId, {});
     return;
   }
 
   try {
-    await db.pois.update(localId, patch);
+    await db.pois.update(localId, {
+      ...patch,
+      syncStatus: "pending",
+    });
   } catch (err) {
     await logDexieBlobFailure("pois.update", err, {
       localId,
@@ -146,8 +157,14 @@ export async function updatePOI(
     });
     throw err;
   }
+  void syncManager.enqueueUpdate("poi", localId, {});
 }
 
 export async function deletePOI(localId: string): Promise<void> {
-  await getDb().pois.delete(localId);
+  const db = getDb();
+  const row = await db.pois.get(localId);
+  if (row?.serverId) {
+    void syncManager.enqueueDelete("poi", localId, { serverId: row.serverId });
+  }
+  await db.pois.delete(localId);
 }

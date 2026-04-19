@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { getDb } from "@/lib/db/schema";
 import type { LocalPolygon } from "@/lib/db/schema";
+import { syncManager } from "@/lib/db/sync";
 
 export async function getMainPolygon(
   projectLocalId: string,
@@ -47,6 +48,7 @@ export async function createPolygon(
     updatedAt: now,
     syncStatus: "pending",
   });
+  void syncManager.enqueueCreate("polygon", localId, {});
   return localId;
 }
 
@@ -65,6 +67,7 @@ export async function updatePolygon(
     updatedAt: new Date(),
     syncStatus: "pending",
   });
+  void syncManager.enqueueUpdate("polygon", localId, {});
 }
 
 /** Borra el polígono y todos sus vértices (Dexie). No aplicar al polígono principal. */
@@ -75,6 +78,11 @@ export async function deletePolygonCascade(
   const row = await db.polygons.get(polygonLocalId);
   if (!row || row.type === "main") {
     throw new Error("Solo se pueden eliminar sub-polígonos de forma explícita.");
+  }
+  if (row.serverId) {
+    void syncManager.enqueueDelete("polygon", polygonLocalId, {
+      serverId: row.serverId,
+    });
   }
   await db.transaction("rw", db.vertices, db.polygons, async () => {
     await db.vertices.where("polygonLocalId").equals(polygonLocalId).delete();

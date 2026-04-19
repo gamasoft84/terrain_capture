@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { getDb } from "@/lib/db/schema";
 import type { LocalProject } from "@/lib/db/schema";
+import { syncManager } from "@/lib/db/sync";
 
 export async function listProjects(): Promise<LocalProject[]> {
   const rows = await getDb().projects.toArray();
@@ -52,6 +53,9 @@ export async function createProjectWithMainPolygon(input: {
     });
   });
 
+  void syncManager.enqueueCreate("project", projectLocalId, {});
+  void syncManager.enqueueCreate("polygon", polygonLocalId, {});
+
   return { projectLocalId };
 }
 
@@ -77,10 +81,18 @@ export async function updateProject(
     updatedAt: new Date(),
     syncStatus: "pending",
   });
+  void syncManager.enqueueUpdate("project", localId, {});
 }
 
 export async function deleteProject(localId: string): Promise<void> {
   const db = getDb();
+  const proj = await db.projects.get(localId);
+  if (proj?.serverId) {
+    void syncManager.enqueueDelete("project", localId, {
+      serverId: proj.serverId,
+    });
+  }
+
   const polygons = await db.polygons
     .where("projectLocalId")
     .equals(localId)

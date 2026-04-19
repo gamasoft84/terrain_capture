@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { preparePhotoBlobForDexie } from "@/lib/db/preparePhotoBlobForDexie";
 import { getDb } from "@/lib/db/schema";
 import type { LocalProjectPhoto } from "@/lib/db/schema";
+import { syncManager } from "@/lib/db/sync";
 
 export async function listProjectPhotos(
   projectLocalId: string,
@@ -45,9 +46,17 @@ export async function createProjectPhoto(
       await db.projectPhotos.update(localId, { photoBytes, photoMime });
     });
   }
+  void syncManager.enqueueCreate("photo", localId, {});
   return localId;
 }
 
 export async function deleteProjectPhoto(localId: string): Promise<void> {
-  await getDb().projectPhotos.delete(localId);
+  const db = getDb();
+  const row = await db.projectPhotos.get(localId);
+  if (row?.serverId) {
+    void syncManager.enqueueDelete("photo", localId, {
+      serverId: row.serverId,
+    });
+  }
+  await db.projectPhotos.delete(localId);
 }

@@ -4,6 +4,7 @@ import { logDexieBlobFailure } from "@/lib/db/logDexieBlobFailure";
 import { preparePhotoBlobForDexie } from "@/lib/db/preparePhotoBlobForDexie";
 import { getDb } from "@/lib/db/schema";
 import type { LocalVertex } from "@/lib/db/schema";
+import { syncManager } from "@/lib/db/sync";
 
 export async function listVerticesByPolygon(
   polygonLocalId: string,
@@ -88,11 +89,20 @@ export async function createVertex(
     throw err;
   }
 
+  void syncManager.enqueueCreate("vertex", localId, {});
+
   return localId;
 }
 
 export async function deleteVertex(localId: string): Promise<void> {
-  await getDb().vertices.delete(localId);
+  const db = getDb();
+  const row = await db.vertices.get(localId);
+  if (row?.serverId) {
+    void syncManager.enqueueDelete("vertex", localId, {
+      serverId: row.serverId,
+    });
+  }
+  await db.vertices.delete(localId);
 }
 
 export async function updateVertex(
@@ -135,7 +145,11 @@ export async function updateVertex(
     delete rest.photoBlob;
     try {
       await db.vertices.where("localId").equals(localId).modify((v) => {
-        Object.assign(v, rest, { photoBytes, photoMime });
+        Object.assign(v, rest, {
+          photoBytes,
+          photoMime,
+          syncStatus: "pending",
+        });
         delete v.photoBlob;
       });
     } catch (err) {
@@ -147,11 +161,15 @@ export async function updateVertex(
       });
       throw err;
     }
+    void syncManager.enqueueUpdate("vertex", localId, {});
     return;
   }
 
   try {
-    await db.vertices.update(localId, patch);
+    await db.vertices.update(localId, {
+      ...patch,
+      syncStatus: "pending",
+    });
   } catch (err) {
     await logDexieBlobFailure("vertices.update", err, {
       localId,
@@ -160,6 +178,7 @@ export async function updateVertex(
     });
     throw err;
   }
+  void syncManager.enqueueUpdate("vertex", localId, {});
 }
 
 export async function nextOrderIndexForPolygon(

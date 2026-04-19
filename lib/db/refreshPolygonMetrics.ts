@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db/schema";
 import { calculateArea, calculatePerimeter } from "@/lib/geo/calculations";
 import { listVerticesByPolygon } from "@/lib/db/vertices";
+import { syncManager } from "@/lib/db/sync";
 
 /** Recalcula área (solo si cerrado y ≥3 vértices) y perímetro del polígono en Dexie. */
 export async function refreshPolygonMetricsFromVertices(
@@ -25,4 +26,5 @@ export async function refreshPolygonMetricsFromVertices(
         delete p.areaM2;
       }
     });
+  void syncManager.enqueueUpdate("polygon", polygonLocalId, {});
 }
