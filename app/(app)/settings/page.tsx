@@ -10,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { OfflineMapDownloader } from "@/components/map/OfflineMapDownloader";
 import { FieldTestChecklist } from "@/components/settings/FieldTestChecklist";
+import { SyncSettingsActions } from "@/components/settings/SyncSettingsActions";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { useBatterySaverControls } from "@/lib/hooks/useBatterySaver";
 
@@ -20,6 +21,19 @@ export default function SettingsPage() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Sincronización con Supabase</CardTitle>
+          <CardDescription>
+            Envío de la cola local al servidor; mismo control que el icono de nube
+            arriba a la derecha.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SyncSettingsActions />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Ajustes</CardTitle>
