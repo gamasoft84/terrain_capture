@@ -39,7 +39,21 @@ import type {
 } from "@/lib/db/schema";
 import { listPoisByProject } from "@/lib/db/pois";
 import { listVerticesByPolygon } from "@/lib/db/vertices";
+import { shareReport } from "@/lib/utils/share";
 import { cn } from "@/lib/utils";
+
+function buildReportShareText(
+  project: LocalProject,
+  payload: ReportGenerationPayload,
+): string {
+  const lines: string[] = [`Informe TerrainCapture — ${project.name}`];
+  const client = payload.clientName.trim() || project.clientName?.trim();
+  if (client) lines.push(`Cliente: ${client}`);
+  lines.push(`Levantamiento: ${payload.surveyDate}`);
+  const notes = payload.executiveNotes.trim();
+  if (notes) lines.push(notes.slice(0, 400));
+  return lines.join("\n");
+}
 
 type ReportPageData = {
   project: LocalProject;
@@ -161,56 +175,69 @@ export default function ProjectReportPage() {
     [data],
   );
 
+  const obtainTerrainReportPngBlob = useCallback(
+    async (
+      payload: ReportGenerationPayload,
+    ): Promise<Blob | null> => {
+      if (!data?.project) return null;
+
+      let mapImageDataUrl: string | null | undefined;
+      if (payload.sections.map) {
+        mapImageDataUrl = await new Promise<string>((resolve) => {
+          const t = window.setTimeout(() => resolve(""), 60_000);
+          mapCaptureResolverRef.current = (url: string) => {
+            window.clearTimeout(t);
+            resolve(url);
+          };
+          setMapCaptureSession((s) => s + 1);
+        });
+      }
+      setMapCaptureSession(0);
+      mapCaptureResolverRef.current = null;
+
+      let galleryImages: { src: string | null }[] = [
+        { src: null },
+        { src: null },
+        { src: null },
+        { src: null },
+      ];
+      if (payload.sections.gallery && data.galleryItems.length > 0) {
+        const hydrated = await hydrateGalleryForPdf(data.galleryItems);
+        const picked = hydrated
+          .filter((h) => h.src != null)
+          .slice(0, 4)
+          .map((h) => ({ src: h.src }));
+        galleryImages = [...picked];
+        while (galleryImages.length < 4) galleryImages.push({ src: null });
+      }
+
+      const input: TerrainReportPngInput = {
+        payload,
+        project: data.project,
+        mainAreaM2: data.main?.areaM2 ?? null,
+        mainPerimeterM: data.main?.perimeterM ?? null,
+        vertexCount: data.vertices.length,
+        mapImageDataUrl: mapImageDataUrl ?? null,
+        galleryImages,
+      };
+
+      return await new Promise<Blob | null>((resolve) => {
+        pngResolverRef.current = resolve;
+        setPngExport({ id: Date.now(), input });
+      });
+    },
+    [data],
+  );
+
   const handleGeneratePng = useCallback(
     async (payload: ReportGenerationPayload) => {
-      if (!data?.project) return;
       try {
-        let mapImageDataUrl: string | null | undefined;
-        if (payload.sections.map) {
-          mapImageDataUrl = await new Promise<string>((resolve) => {
-            const t = window.setTimeout(() => resolve(""), 60_000);
-            mapCaptureResolverRef.current = (url: string) => {
-              window.clearTimeout(t);
-              resolve(url);
-            };
-            setMapCaptureSession((s) => s + 1);
-          });
-        }
-        setMapCaptureSession(0);
-        mapCaptureResolverRef.current = null;
-
-        let galleryImages: { src: string | null }[] = [
-          { src: null },
-          { src: null },
-          { src: null },
-          { src: null },
-        ];
-        if (payload.sections.gallery && data.galleryItems.length > 0) {
-          const hydrated = await hydrateGalleryForPdf(data.galleryItems);
-          const picked = hydrated
-            .filter((h) => h.src != null)
-            .slice(0, 4)
-            .map((h) => ({ src: h.src }));
-          galleryImages = [...picked];
-          while (galleryImages.length < 4) galleryImages.push({ src: null });
-        }
-
-        const input: TerrainReportPngInput = {
-          payload,
-          project: data.project,
-          mainAreaM2: data.main?.areaM2 ?? null,
-          mainPerimeterM: data.main?.perimeterM ?? null,
-          vertexCount: data.vertices.length,
-          mapImageDataUrl: mapImageDataUrl ?? null,
-          galleryImages,
-        };
-
-        const blob = await new Promise<Blob | null>((resolve) => {
-          pngResolverRef.current = resolve;
-          setPngExport({ id: Date.now(), input });
-        });
-
-        if (blob != null && blob.size > 0) {
+        const blob = await obtainTerrainReportPngBlob(payload);
+        if (
+          blob != null &&
+          blob.size > 0 &&
+          data?.project != null
+        ) {
           triggerDownloadTerrainReportPng(
             blob,
             buildTerrainReportPngFilename(data.project.name, new Date()),
@@ -223,7 +250,32 @@ export default function ProjectReportPage() {
         pngResolverRef.current = null;
       }
     },
-    [data],
+    [data?.project, obtainTerrainReportPngBlob],
+  );
+
+  const handleShare = useCallback(
+    async (payload: ReportGenerationPayload) => {
+      try {
+        const blob = await obtainTerrainReportPngBlob(payload);
+        if (
+          blob != null &&
+          blob.size > 0 &&
+          data?.project != null
+        ) {
+          await shareReport(
+            blob,
+            buildTerrainReportPngFilename(data.project.name, new Date()),
+            buildReportShareText(data.project, payload),
+          );
+        }
+      } finally {
+        setMapCaptureSession(0);
+        mapCaptureResolverRef.current = null;
+        setPngExport(null);
+        pngResolverRef.current = null;
+      }
+    },
+    [data?.project, obtainTerrainReportPngBlob],
   );
 
   if (data === undefined) {
@@ -306,6 +358,7 @@ export default function ProjectReportPage() {
         }}
         onGeneratePdf={handleGeneratePdf}
         onGeneratePng={handleGeneratePng}
+        onShare={handleShare}
       />
     </div>
   );
