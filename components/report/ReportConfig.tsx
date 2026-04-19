@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -313,6 +313,23 @@ export function ReportConfig({
     [sections, clientName, surveyDate, executiveNotes],
   );
 
+  const allSectionsSelected = useMemo(
+    () => REPORT_SECTION_IDS.every((id) => sections[id]),
+    [sections],
+  );
+  const someSectionsSelected = useMemo(
+    () => REPORT_SECTION_IDS.some((id) => sections[id]),
+    [sections],
+  );
+  const selectAllInputRef = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    const el = selectAllInputRef.current;
+    if (!el) return;
+    el.indeterminate =
+      someSectionsSelected && !allSectionsSelected;
+  }, [someSectionsSelected, allSectionsSelected]);
+
   const pdfReady = typeof onGeneratePdf === "function";
   const pngReady = typeof onGeneratePng === "function";
   const shareReady = typeof onShare === "function";
@@ -339,7 +356,33 @@ export function ReportConfig({
       <div className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>Secciones del informe</CardTitle>
+            <div className="flex items-center gap-3">
+              <input
+                ref={selectAllInputRef}
+                id="report-sections-select-all"
+                type="checkbox"
+                checked={allSectionsSelected}
+                onChange={() => {
+                  const selectAll = !allSectionsSelected;
+                  setSections(() => {
+                    const next = {} as ReportSectionsState;
+                    for (const id of REPORT_SECTION_IDS) {
+                      next[id] = selectAll;
+                    }
+                    return next;
+                  });
+                }}
+                className="border-input text-primary focus-visible:ring-ring size-4 shrink-0 rounded border shadow-xs focus-visible:ring-2 focus-visible:outline-none"
+              />
+              <CardTitle className="mb-0">
+                <label
+                  htmlFor="report-sections-select-all"
+                  className="cursor-pointer select-none"
+                >
+                  Secciones del informe
+                </label>
+              </CardTitle>
+            </div>
             <CardDescription>
               Elegí qué incluir en el PDF o PNG para el cliente.
             </CardDescription>
