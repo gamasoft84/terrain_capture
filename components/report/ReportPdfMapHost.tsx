@@ -37,23 +37,27 @@ export function ReportPdfMapHost({
   return (
     <div
       key={sessionId}
-      className="bg-muted fixed top-0 left-[-9999px] z-[400] h-[480px] w-[800px] overflow-hidden rounded-lg shadow-none"
+      className="pointer-events-none fixed inset-0 z-[400] flex justify-center overflow-hidden"
+      style={{ opacity: 0.02, visibility: "visible" }}
       aria-hidden
     >
       {/*
-        Captura tras idle — ver MapCanvasMapbox / MapCanvasGoogle / MapCanvasMapLibre.
+        Dentro del viewport (WebKit carga teselas). Captura tras idle — ver
+        MapCanvasMapbox / MapCanvasGoogle / MapCanvasMapLibre.
       */}
-      <MapCanvas
-        className="h-[480px] min-h-[480px] w-full"
-        vertices={vertices}
-        isClosed={polygonIsClosed}
-        subLayers={subLayers}
-        pois={pois}
-        showUserLocation={false}
-        allowVertexDrag={false}
-        minimalChrome
-        onCaptureReady={handleCaptureReady}
-      />
+      <div className="bg-muted h-[480px] w-[800px] max-w-[100vw] overflow-hidden rounded-lg shadow-none">
+        <MapCanvas
+          className="h-[480px] min-h-[480px] w-full"
+          vertices={vertices}
+          isClosed={polygonIsClosed}
+          subLayers={subLayers}
+          pois={pois}
+          showUserLocation={false}
+          allowVertexDrag={false}
+          minimalChrome
+          onCaptureReady={handleCaptureReady}
+        />
+      </div>
     </div>
   );
 }

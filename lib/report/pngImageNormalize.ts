@@ -1,7 +1,7 @@
 /**
- * html-to-image compone el PNG rasterizando el DOM a canvas. En iOS Safari las
- * data URLs enormes (fotos de cámara) y el mapa WebGL a veces no se pintan;
- * reducir JPEG antes de montar la plantilla estabiliza la captura.
+ * Antes del PNG de historia: reduce JPEG solo la galería (fotos grandes).
+ * La captura del mapa se deja en PNG tal cual viene del motor (Mapbox/WebGL,
+ * Google o MapLibre) para no aplastar transparencia a negro.
  */
 
 async function blobFromDataUrl(dataUrl: string): Promise<Blob> {
@@ -72,14 +72,12 @@ export async function normalizeTerrainReportPngRasterSources(input: {
   mapImageDataUrl: string | null;
   galleryImages: { src: string | null }[];
 }> {
-  let mapImageDataUrl = input.mapImageDataUrl;
-  if (mapImageDataUrl?.startsWith("data:")) {
-    try {
-      mapImageDataUrl = await downscaleToJpegDataUrl(mapImageDataUrl, 1280);
-    } catch {
-      /* usar original */
-    }
-  }
+  /**
+   * No convertir la captura del mapa a JPEG: el canvas WebGL suele exportar PNG
+   * con alpha; al rasterizar a JPEG las zonas transparentes pasan a negro y la
+   * franja del mapa en el PNG del reporte queda “vacía” o negra.
+   */
+  const mapImageDataUrl = input.mapImageDataUrl;
 
   const galleryImages = await Promise.all(
     input.galleryImages.map(async (g) => {
