@@ -73,6 +73,8 @@ export async function collectProjectGallery(
         photoBlob: v.photoBlob,
         photoBytes: v.photoBytes,
         photoMime: v.photoMime,
+        thumbnailBytes: v.thumbnailBytes,
+        thumbnailMime: v.thumbnailMime,
         syncStatus: v.syncStatus,
         syncErrorReason: v.syncErrorReason,
       });
@@ -95,6 +97,8 @@ export async function collectProjectGallery(
       photoBlob: poi.photoBlob,
       photoBytes: poi.photoBytes,
       photoMime: poi.photoMime,
+      thumbnailBytes: poi.thumbnailBytes,
+      thumbnailMime: poi.thumbnailMime,
       syncStatus: poi.syncStatus,
       syncErrorReason: poi.syncErrorReason,
     });
@@ -118,6 +122,8 @@ export async function collectProjectGallery(
       photoBlob: ph.photoBlob,
       photoBytes: ph.photoBytes,
       photoMime: ph.photoMime,
+      thumbnailBytes: ph.thumbnailBytes,
+      thumbnailMime: ph.thumbnailMime,
       syncStatus: ph.syncStatus,
       syncErrorReason: ph.syncErrorReason,
     });

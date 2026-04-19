@@ -6,7 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PhotoSourceInputs } from "@/components/capture/PhotoSourceInputs";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
+import {
+  pathExtensionForImageBlob,
+  uploadToProjectPhotosBucket,
+} from "@/lib/supabase/storage";
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { createProjectPhoto } from "@/lib/db/projectPhotos";
@@ -26,7 +29,8 @@ async function uploadGalleryPhotoInBackground(
       return;
     }
     const client = createBrowserSupabaseClient();
-    const path = `${projectLocalId}/gallery/${photoLocalId}.jpg`;
+    const ext = pathExtensionForImageBlob(blob);
+    const path = `${projectLocalId}/gallery/${photoLocalId}.${ext}`;
     const { publicUrl } = await uploadToProjectPhotosBucket(
       client,
       path,

@@ -6,7 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
+import {
+  pathExtensionForImageBlob,
+  uploadToProjectPhotosBucket,
+} from "@/lib/supabase/storage";
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { createPOI } from "@/lib/db/pois";
@@ -47,7 +50,8 @@ async function uploadPoiPhotoInBackground(
       return;
     }
     const client = createBrowserSupabaseClient();
-    const path = `${projectLocalId}/pois/${poiLocalId}.jpg`;
+    const ext = pathExtensionForImageBlob(blob);
+    const path = `${projectLocalId}/pois/${poiLocalId}.${ext}`;
     const { publicUrl } = await uploadToProjectPhotosBucket(
       client,
       path,

@@ -52,7 +52,10 @@ import {
   loadProjectForKmlExport,
 } from "@/lib/geo/kml";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
+import {
+  pathExtensionForImageBlob,
+  uploadToProjectPhotosBucket,
+} from "@/lib/supabase/storage";
 
 type ProjectDetailData = {
   project: LocalProject | undefined;
@@ -257,7 +260,7 @@ export default function ProjectDetailPage() {
           const uploadBlob = row ? blobFromStored(row) : undefined;
           if (!uploadBlob) return;
           const client = createBrowserSupabaseClient();
-          const path = `${data.project.localId}/pois/${localId}.jpg`;
+          const path = `${data.project.localId}/pois/${localId}.${pathExtensionForImageBlob(uploadBlob)}`;
           const { publicUrl } = await uploadToProjectPhotosBucket(
             client,
             path,

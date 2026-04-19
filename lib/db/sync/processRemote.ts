@@ -160,8 +160,9 @@ async function uploadVertexPhotoIfNeeded(
   const blob = blobFromStored(vertex);
   if (!blob || blob.size === 0) return vertex.photoUrl;
 
-  const path = `${projectLocalId}/vertices/${vertex.localId}.jpg`;
   const mime = blob.type || vertex.photoMime || "image/jpeg";
+  const ext = pathExtensionForImageBlob(blob, mime);
+  const path = `${projectLocalId}/vertices/${vertex.localId}.${ext}`;
 
   for (let attempt = 1; attempt <= MAX_PHOTO_UPLOAD_ATTEMPTS; attempt++) {
     try {
@@ -279,8 +280,9 @@ async function uploadPoiPhotoIfNeeded(
   const blob = blobFromStored(poi);
   if (!blob || blob.size === 0) return poi.photoUrl;
 
-  const path = `${projectLocalId}/pois/${poi.localId}.jpg`;
   const mime = blob.type || poi.photoMime || "image/jpeg";
+  const ext = pathExtensionForImageBlob(blob, mime);
+  const path = `${projectLocalId}/pois/${poi.localId}.${ext}`;
 
   for (let attempt = 1; attempt <= MAX_PHOTO_UPLOAD_ATTEMPTS; attempt++) {
     try {
@@ -387,8 +389,9 @@ async function uploadProjectPhotoBlob(
   if (!blob || blob.size === 0) {
     throw new Error("Foto de proyecto sin bytes locales");
   }
-  const path = `${projectLocalId}/gallery/${photo.localId}.jpg`;
   const mime = blob.type || photo.photoMime || "image/jpeg";
+  const ext = pathExtensionForImageBlob(blob, mime);
+  const path = `${projectLocalId}/gallery/${photo.localId}.${ext}`;
 
   for (let attempt = 1; attempt <= MAX_PHOTO_UPLOAD_ATTEMPTS; attempt++) {
     try {

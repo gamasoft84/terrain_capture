@@ -16,12 +16,18 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { POIDetailSheet } from "@/components/project/POIDetailSheet";
 import { PoiCaptureSheet } from "@/components/project/PoiCaptureSheet";
-import { blobFromStored } from "@/lib/db/blobFromStored";
+import {
+  blobFromStored,
+  thumbnailOrPhotoBlob,
+} from "@/lib/db/blobFromStored";
 import { deletePOI, listPoisByProject, updatePOI } from "@/lib/db/pois";
 import { getDb } from "@/lib/db/schema";
 import type { LocalPOI, LocalProject } from "@/lib/db/schema";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { uploadToProjectPhotosBucket } from "@/lib/supabase/storage";
+import {
+  pathExtensionForImageBlob,
+  uploadToProjectPhotosBucket,
+} from "@/lib/supabase/storage";
 
 type PoisPageData = {
   project: LocalProject | undefined;
@@ -30,7 +36,7 @@ type PoisPageData = {
 
 function PoiListThumb({ poi }: { poi: LocalPOI }) {
   const blobUrl = useMemo(() => {
-    const b = blobFromStored(poi);
+    const b = thumbnailOrPhotoBlob(poi);
     return b ? URL.createObjectURL(b) : null;
   }, [poi]);
 
@@ -125,7 +131,7 @@ export default function ProjectPoisPage() {
           const uploadBlob = row ? blobFromStored(row) : undefined;
           if (!uploadBlob) return;
           const client = createBrowserSupabaseClient();
-          const path = `${data.project.localId}/pois/${poiLocalId}.jpg`;
+          const path = `${data.project.localId}/pois/${poiLocalId}.${pathExtensionForImageBlob(uploadBlob)}`;
           const { publicUrl } = await uploadToProjectPhotosBucket(
             client,
             path,

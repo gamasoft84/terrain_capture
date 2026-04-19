@@ -6,7 +6,10 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { uploadProjectVertexPhoto } from "@/lib/supabase/storage";
+import {
+  pathExtensionForImageBlob,
+  uploadProjectVertexPhoto,
+} from "@/lib/supabase/storage";
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { updatePolygon } from "@/lib/db/polygons";
@@ -44,7 +47,8 @@ async function uploadVertexPhotoInBackground(
       return;
     }
     const client = createBrowserSupabaseClient();
-    const path = `${projectLocalId}/vertices/${vertexLocalId}.jpg`;
+    const ext = pathExtensionForImageBlob(blob);
+    const path = `${projectLocalId}/vertices/${vertexLocalId}.${ext}`;
     const { publicUrl } = await uploadProjectVertexPhoto(
       client,
       path,

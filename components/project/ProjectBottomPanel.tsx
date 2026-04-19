@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { blobFromStored } from "@/lib/db/blobFromStored";
+import { thumbnailOrPhotoBlob } from "@/lib/db/blobFromStored";
 import type {
   LocalPOI,
   LocalPolygon,
@@ -26,7 +26,7 @@ function VertexStripThumb({
   onSelect: () => void;
 }) {
   const blobUrl = useMemo(() => {
-    const b = blobFromStored(v);
+    const b = thumbnailOrPhotoBlob(v);
     return b ? URL.createObjectURL(b) : null;
   }, [v]);
   useEffect(() => {

@@ -22,10 +22,7 @@ import {
   triggerDownloadTerrainReportPng,
   type TerrainReportPngInput,
 } from "@/components/report/ReportPNG";
-import {
-  downloadTerrainReportPdf,
-  type TerrainReportPdfInput,
-} from "@/components/report/ReportPDF";
+import type { TerrainReportPdfInput } from "@/components/report/ReportPDF";
 import { hydrateGalleryForPdf } from "@/lib/report/pdfHydrate";
 import { collectProjectGallery } from "@/lib/gallery/collectProjectGallery";
 import { listSubPolygonsByProject } from "@/lib/db/polygons";
@@ -166,6 +163,9 @@ export default function ProjectReportPage() {
           galleryItems: data.galleryItems,
           mapImageDataUrl: mapImageDataUrl ?? null,
         };
+        const { downloadTerrainReportPdf } = await import(
+          "@/components/report/ReportPDF"
+        );
         await downloadTerrainReportPdf(input);
       } finally {
         setMapCaptureSession(0);

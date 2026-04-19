@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { uploadProjectVertexPhoto } from "@/lib/supabase/storage";
+import {
+  pathExtensionForImageBlob,
+  uploadProjectVertexPhoto,
+} from "@/lib/supabase/storage";
 import { blobFromStored } from "@/lib/db/blobFromStored";
 import { getDb } from "@/lib/db/schema";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
@@ -47,7 +50,8 @@ async function uploadVertexPhotoInBackground(
       return;
     }
     const client = createBrowserSupabaseClient();
-    const path = `${projectLocalId}/vertices/${vertexLocalId}.jpg`;
+    const ext = pathExtensionForImageBlob(blob);
+    const path = `${projectLocalId}/vertices/${vertexLocalId}.${ext}`;
     const { publicUrl } = await uploadProjectVertexPhoto(
       client,
       path,

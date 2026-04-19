@@ -18,7 +18,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { GalleryLightbox } from "@/components/gallery/GalleryLightbox";
 import { ProjectGalleryAddSheet } from "@/components/gallery/ProjectGalleryAddSheet";
-import { blobFromStored } from "@/lib/db/blobFromStored";
+import {
+  blobFromStored,
+  thumbnailOrPhotoBlob,
+} from "@/lib/db/blobFromStored";
 import { collectProjectGallery } from "@/lib/gallery/collectProjectGallery";
 import type { ProjectGalleryItem } from "@/lib/gallery/collectProjectGallery";
 import { retryGalleryItemPhotoSync } from "@/lib/db/sync/conflictResolution";
@@ -35,7 +38,7 @@ function GalleryThumb({
   onOpen: () => void;
 }) {
   const blobUrl = useMemo(() => {
-    const b = blobFromStored(item);
+    const b = thumbnailOrPhotoBlob(item);
     return b ? URL.createObjectURL(b) : null;
   }, [item]);
 
