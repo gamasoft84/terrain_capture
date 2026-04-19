@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyProjectsHero } from "@/components/dashboard/EmptyProjectsHero";
 import { getDb } from "@/lib/db/schema";
 import { formatAreaDisplay } from "@/lib/geo/calculations";
 
@@ -81,16 +82,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {safeRows.length === 0 ? (
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle>Sin proyectos</CardTitle>
-            <CardDescription>
-              Crea uno para empezar un levantamiento.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : null}
+      {safeRows.length === 0 ? <EmptyProjectsHero /> : null}
 
       {safeRows.map((row) => (
         <Link key={row.projectLocalId} href={`/projects/${row.projectLocalId}`}>

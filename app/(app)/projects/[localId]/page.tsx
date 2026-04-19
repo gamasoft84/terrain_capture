@@ -24,6 +24,7 @@ import {
   useSeedSubAreasWorkflow,
 } from "@/components/project/SubPolygonWorkflow";
 import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
+import { FieldPermissionsIntro } from "@/components/onboarding/FieldPermissionsIntro";
 import { ProjectMapExportMenu } from "@/components/project/ProjectMapExportMenu";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import {
@@ -326,6 +327,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col">
+      <FieldPermissionsIntro />
       <div className="fixed inset-x-0 top-14 bottom-16 z-10 flex flex-col">
         <MapCanvas
           className="min-h-0 w-full flex-1 basis-0"

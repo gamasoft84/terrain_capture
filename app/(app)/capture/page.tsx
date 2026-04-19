@@ -12,6 +12,7 @@ import {
 import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import { useGeolocation } from "@/lib/hooks/useGeolocation";
 import { useGPSAveraged } from "@/lib/hooks/useGPSAveraged";
+import { FieldPermissionsIntro } from "@/components/onboarding/FieldPermissionsIntro";
 
 function errorMessage(err: GeolocationPositionError): string {
   switch (err.code) {
@@ -72,6 +73,7 @@ export default function CapturePage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <FieldPermissionsIntro />
       <Card>
         <CardHeader>
           <CardTitle>Capturar</CardTitle>

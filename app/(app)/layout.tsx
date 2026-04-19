@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/layout/BottomNav";
+import { WelcomeTour } from "@/components/onboarding/WelcomeTour";
 import { FieldBatteryHint } from "@/components/layout/FieldBatteryHint";
 import { LastProjectRouteTracker } from "@/components/layout/LastProjectRouteTracker";
 import { TopBar } from "@/components/layout/TopBar";
@@ -19,6 +20,7 @@ export default function AppShellLayout({
         <SyncQueueProvider>
           <SyncConflictGate />
           <LastProjectRouteTracker />
+          <WelcomeTour />
           <div className="bg-background flex min-h-dvh flex-col">
             <div className="bg-background sticky top-0 z-40 flex flex-col">
               <OfflineBanner />
