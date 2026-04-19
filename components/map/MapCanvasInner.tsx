@@ -70,8 +70,11 @@ export interface MapCanvasProps {
   ) => { polygonLocalId: string; polygonIsClosed: boolean } | null;
   /** Oculta controles y HUD para capturas (PDF). */
   minimalChrome?: boolean;
-  /** Mapa listo tras encuadre y primer ciclo idle (tiles). */
-  onCaptureReady?: () => void;
+  /**
+   * Solo con minimalChrome: PNG base64 desde el lienzo MapLibre (WebGL).
+   * No uses html-to-image sobre el DOM: no captura bien el canvas del mapa.
+   */
+  onCaptureReady?: (dataUrl: string) => void;
 }
 
 function sortedVertices(vertices: LocalVertex[]): LocalVertex[] {
@@ -524,6 +527,13 @@ export default function MapCanvasInner({
       vertex.latitude,
     ]);
 
+    const fitDuration = minimalChromeRef.current ? 0 : 500;
+    const fitOpts = {
+      padding: 56 as const,
+      maxZoom: 18 as const,
+      duration: fitDuration,
+    };
+
     if (closed && mainCoords.length >= 3 && area != null && Number.isFinite(area)) {
       const [lng, lat] = calculateCentroid(mainSorted);
       const label = createAreaLabelEl(formatAreaDisplay(area));
@@ -559,7 +569,7 @@ export default function MapCanvasInner({
     for (const pt of allCoords) bounds.extend(pt as [number, number]);
 
     if (!dragPref) {
-      map.fitBounds(bounds, { padding: 56, maxZoom: 18, duration: 500 });
+      map.fitBounds(bounds, fitOpts);
       applyEdgeDistanceMarkerVisibility(
         edgeDistanceMarkersRef.current,
         map.getZoom(),
@@ -573,7 +583,7 @@ export default function MapCanvasInner({
       didFitForCurrentVertexSetRef.current = false;
     }
     if (!didFitForCurrentVertexSetRef.current) {
-      map.fitBounds(bounds, { padding: 56, maxZoom: 18, duration: 500 });
+      map.fitBounds(bounds, fitOpts);
       didFitForCurrentVertexSetRef.current = true;
     }
 
@@ -641,6 +651,7 @@ export default function MapCanvasInner({
 
     const map = new maplibregl.Map({
       container,
+      preserveDrawingBuffer: minimalChromeRef.current === true,
       style: {
         version: 8,
         sources: {
@@ -790,11 +801,26 @@ export default function MapCanvasInner({
         requestAnimationFrame(() => map.resize());
       });
 
-      map.once("idle", () => {
-        window.setTimeout(() => {
-          onCaptureReadyRef.current?.();
-        }, 700);
-      });
+      if (minimalChromeRef.current && onCaptureReadyRef.current) {
+        let exported = false;
+        const exportFromCanvas = () => {
+          if (exported) return;
+          exported = true;
+          window.clearTimeout(fallbackTimer);
+          const cb = onCaptureReadyRef.current;
+          if (!cb) return;
+          try {
+            map.triggerRepaint();
+            cb(map.getCanvas().toDataURL("image/png"));
+          } catch {
+            cb("");
+          }
+        };
+        const fallbackTimer = window.setTimeout(exportFromCanvas, 5_000);
+        map.once("idle", () => {
+          window.setTimeout(exportFromCanvas, 750);
+        });
+      }
     });
 
     mapRef.current = map;

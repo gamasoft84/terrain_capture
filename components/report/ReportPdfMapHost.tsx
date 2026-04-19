@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback } from "react";
 import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
 import type { LocalPOI, LocalVertex } from "@/lib/db/schema";
 
@@ -26,15 +26,23 @@ export function ReportPdfMapHost({
   pois,
   onCaptured,
 }: ReportPdfMapHostProps) {
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const handleCaptureReady = useCallback(
+    (dataUrl: string) => {
+      onCaptured(dataUrl);
+    },
+    [onCaptured],
+  );
 
   return (
     <div
       key={sessionId}
-      ref={wrapRef}
       className="bg-muted fixed top-0 left-[-9999px] z-[400] h-[480px] w-[800px] overflow-hidden rounded-lg shadow-none"
       aria-hidden
     >
+      {/*
+        La captura sale del lienzo WebGL (MapLibre), no de html-to-image:
+        toPng del DOM suele devolver transparente / vacío con mapas GL.
+      */}
       <MapCanvas
         className="h-[480px] min-h-[480px] w-full"
         vertices={vertices}
@@ -44,23 +52,7 @@ export function ReportPdfMapHost({
         showUserLocation={false}
         allowVertexDrag={false}
         minimalChrome
-        onCaptureReady={async () => {
-          const el = wrapRef.current;
-          if (!el) {
-            onCaptured("");
-            return;
-          }
-          try {
-            const { toPng } = await import("html-to-image");
-            const url = await toPng(el, {
-              pixelRatio: 2,
-              cacheBust: true,
-            });
-            onCaptured(url);
-          } catch {
-            onCaptured("");
-          }
-        }}
+        onCaptureReady={handleCaptureReady}
       />
     </div>
   );
