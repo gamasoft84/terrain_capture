@@ -8,18 +8,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { OfflineMapDownloader } from "@/components/map/OfflineMapDownloader";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 
 export default function SettingsPage() {
   const { allowVertexMapDrag, setAllowVertexMapDrag } = useMapVertexDrag();
 
   return (
-    <div className="flex max-w-lg flex-col gap-4">
+    <div className="flex max-w-2xl flex-col gap-4">
       <Card>
         <CardHeader>
           <CardTitle>Ajustes</CardTitle>
           <CardDescription>
-            Preferencias locales en este dispositivo (Dexie no aplica aquí).
+            Preferencias almacenadas localmente en este dispositivo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -54,6 +55,18 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Mapa offline (satélite)</CardTitle>
+          <CardDescription>
+            Descarga teselas de la vista actual para usar el fondo ESRI sin conexión.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OfflineMapDownloader />
         </CardContent>
       </Card>
     </div>

@@ -21,9 +21,11 @@ import {
   edgeDistanceLabelFeatures,
   formatAreaDisplay,
 } from "@/lib/geo/calculations";
-
-const ESRI_TILE =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+import {
+  ESRI_RASTER_ATTRIBUTION,
+  ensureTerrainCacheProtocol,
+  terrainCacheRasterTiles,
+} from "@/lib/map/tile-providers";
 
 const DEFAULT_CENTER: [number, number] = [-96.13, 15.87];
 const DEFAULT_ZOOM = 14;
@@ -626,6 +628,8 @@ export default function MapCanvasInner({
     const { initialCenter: ic, initialZoom: iz, showUserLocation: sul } =
       mountOptsRef.current;
 
+    ensureTerrainCacheProtocol();
+
     const map = new maplibregl.Map({
       container,
       style: {
@@ -633,10 +637,9 @@ export default function MapCanvasInner({
         sources: {
           esri: {
             type: "raster",
-            tiles: [ESRI_TILE],
+            tiles: terrainCacheRasterTiles,
             tileSize: 256,
-            attribution:
-              '<a href="https://www.esri.com/">© Esri</a> — Maxar, Earthstar, USDA, USGS, IGN, IGP',
+            attribution: ESRI_RASTER_ATTRIBUTION,
             maxzoom: 19,
           },
         },
