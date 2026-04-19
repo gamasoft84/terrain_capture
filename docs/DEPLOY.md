@@ -15,11 +15,12 @@ Variables que la app espera (ver [`.env.local.example`](../.env.local.example)):
 
 | Variable | Uso |
 |----------|-----|
+| `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` | [Mapbox access token](https://docs.mapbox.com/help/getting-started/access-tokens/): mapa del proyecto (estilo satélite + calles). Restringir por URL en el panel de Mapbox. También se acepta `NEXT_PUBLIC_MAPBOX_TOKEN` como alias. |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública (cliente / PWA) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Solo servidor u operaciones admin; **no** exponer como `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_HARDCODED_USER_ID` | Si el flujo actual asocia datos a un usuario fijo en desarrollo |
-| `NEXT_PUBLIC_MAPTILER_KEY` | Si el mapa usa teselas MapTiler (opcional según configuración) |
+| `NEXT_PUBLIC_MAPTILER_KEY` | Opcional si algún flujo usa teselas MapTiler además del estilo Mapbox |
 
 ## 2. Vercel
 

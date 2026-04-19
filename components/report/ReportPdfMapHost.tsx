@@ -11,12 +11,12 @@ export type ReportPdfMapHostProps = {
   polygonIsClosed: boolean;
   subLayers: SubPolygonMapLayer[];
   pois: LocalPOI[];
-  /** Devuelve data URL PNG (puede ser vacío si falla html-to-image). */
+  /** Devuelve data URL PNG del canvas Mapbox (puede ser vacío si falla la captura). */
   onCaptured: (dataUrl: string) => void;
 };
 
 /**
- * Mapa fuera de pantalla para capturar el polígono en el PDF (html-to-image).
+ * Mapa fuera de pantalla para capturar el polígono en el PDF (canvas WebGL tras idle).
  */
 export function ReportPdfMapHost({
   sessionId,
@@ -40,8 +40,7 @@ export function ReportPdfMapHost({
       aria-hidden
     >
       {/*
-        La captura sale del lienzo WebGL (MapLibre), no de html-to-image:
-        toPng del DOM suele devolver transparente / vacío con mapas GL.
+        Captura del canvas Mapbox tras idle (see MapCanvasInner).
       */}
       <MapCanvas
         className="h-[480px] min-h-[480px] w-full"
