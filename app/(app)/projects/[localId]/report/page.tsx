@@ -17,9 +17,16 @@ import type { SubPolygonMapLayer } from "@/components/map/MapCanvas";
 import { ReportConfig } from "@/components/report/ReportConfig";
 import { ReportPdfMapHost } from "@/components/report/ReportPdfMapHost";
 import {
+  buildTerrainReportPngFilename,
+  ReportPngExportHost,
+  triggerDownloadTerrainReportPng,
+  type TerrainReportPngInput,
+} from "@/components/report/ReportPNG";
+import {
   downloadTerrainReportPdf,
   type TerrainReportPdfInput,
 } from "@/components/report/ReportPDF";
+import { hydrateGalleryForPdf } from "@/lib/report/pdfHydrate";
 import { collectProjectGallery } from "@/lib/gallery/collectProjectGallery";
 import { listSubPolygonsByProject } from "@/lib/db/polygons";
 import type { ReportGenerationPayload } from "@/lib/report/config";
@@ -111,6 +118,13 @@ export default function ProjectReportPage() {
   const mapCaptureResolverRef = useRef<
     ((dataUrl: string) => void) | null
   >(null);
+  const [pngExport, setPngExport] = useState<{
+    id: number;
+    input: TerrainReportPngInput;
+  } | null>(null);
+  const pngResolverRef = useRef<
+    ((blob: Blob | null) => void) | null
+  >(null);
 
   const handleGeneratePdf = useCallback(
     async (payload: ReportGenerationPayload) => {
@@ -142,6 +156,71 @@ export default function ProjectReportPage() {
       } finally {
         setMapCaptureSession(0);
         mapCaptureResolverRef.current = null;
+      }
+    },
+    [data],
+  );
+
+  const handleGeneratePng = useCallback(
+    async (payload: ReportGenerationPayload) => {
+      if (!data?.project) return;
+      try {
+        let mapImageDataUrl: string | null | undefined;
+        if (payload.sections.map) {
+          mapImageDataUrl = await new Promise<string>((resolve) => {
+            const t = window.setTimeout(() => resolve(""), 60_000);
+            mapCaptureResolverRef.current = (url: string) => {
+              window.clearTimeout(t);
+              resolve(url);
+            };
+            setMapCaptureSession((s) => s + 1);
+          });
+        }
+        setMapCaptureSession(0);
+        mapCaptureResolverRef.current = null;
+
+        let galleryImages: { src: string | null }[] = [
+          { src: null },
+          { src: null },
+          { src: null },
+          { src: null },
+        ];
+        if (payload.sections.gallery && data.galleryItems.length > 0) {
+          const hydrated = await hydrateGalleryForPdf(data.galleryItems);
+          const picked = hydrated
+            .filter((h) => h.src != null)
+            .slice(0, 4)
+            .map((h) => ({ src: h.src }));
+          galleryImages = [...picked];
+          while (galleryImages.length < 4) galleryImages.push({ src: null });
+        }
+
+        const input: TerrainReportPngInput = {
+          payload,
+          project: data.project,
+          mainAreaM2: data.main?.areaM2 ?? null,
+          mainPerimeterM: data.main?.perimeterM ?? null,
+          vertexCount: data.vertices.length,
+          mapImageDataUrl: mapImageDataUrl ?? null,
+          galleryImages,
+        };
+
+        const blob = await new Promise<Blob | null>((resolve) => {
+          pngResolverRef.current = resolve;
+          setPngExport({ id: Date.now(), input });
+        });
+
+        if (blob != null && blob.size > 0) {
+          triggerDownloadTerrainReportPng(
+            blob,
+            buildTerrainReportPngFilename(data.project.name, new Date()),
+          );
+        }
+      } finally {
+        setMapCaptureSession(0);
+        mapCaptureResolverRef.current = null;
+        setPngExport(null);
+        pngResolverRef.current = null;
       }
     },
     [data],
@@ -187,6 +266,19 @@ export default function ProjectReportPage() {
         />
       ) : null}
 
+      {pngExport ? (
+        <ReportPngExportHost
+          key={pngExport.id}
+          sessionKey={pngExport.id}
+          input={pngExport.input}
+          onDone={(blob) => {
+            pngResolverRef.current?.(blob);
+            pngResolverRef.current = null;
+            setPngExport(null);
+          }}
+        />
+      ) : null}
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-foreground text-lg font-semibold tracking-tight">
@@ -207,6 +299,7 @@ export default function ProjectReportPage() {
         project={data.project}
         previewContext={data.previewContext}
         onGeneratePdf={handleGeneratePdf}
+        onGeneratePng={handleGeneratePng}
       />
     </div>
   );
