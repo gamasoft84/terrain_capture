@@ -45,6 +45,8 @@ import type {
   LocalProjectPhoto,
   LocalVertex,
 } from "@/lib/db/schema";
+import { downloadProjectCsv } from "@/lib/geo/csv";
+import { downloadProjectGeoJson } from "@/lib/geo/geojson";
 import {
   downloadProjectKml,
   loadProjectForKmlExport,
@@ -81,6 +83,8 @@ export default function ProjectDetailPage() {
   const [subAreasWorkflowEnabled, setSubAreasWorkflowEnabled] =
     useState(false);
   const [kmlBusy, setKmlBusy] = useState(false);
+  const [geoJsonBusy, setGeoJsonBusy] = useState(false);
+  const [csvBusy, setCsvBusy] = useState(false);
 
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
@@ -363,7 +367,7 @@ export default function ProjectDetailPage() {
               variant="secondary"
               size="sm"
               className="shadow-md"
-              disabled={kmlBusy}
+              disabled={kmlBusy || geoJsonBusy || csvBusy}
               onClick={() => {
                 void (async () => {
                   setKmlBusy(true);
@@ -377,6 +381,46 @@ export default function ProjectDetailPage() {
               }}
             >
               {kmlBusy ? "Exportando…" : "KML"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shadow-md"
+              disabled={kmlBusy || geoJsonBusy || csvBusy}
+              onClick={() => {
+                void (async () => {
+                  setGeoJsonBusy(true);
+                  try {
+                    const input = await loadProjectForKmlExport(localId);
+                    if (input) await downloadProjectGeoJson(input);
+                  } finally {
+                    setGeoJsonBusy(false);
+                  }
+                })();
+              }}
+            >
+              {geoJsonBusy ? "Exportando…" : "GeoJSON"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shadow-md"
+              disabled={kmlBusy || geoJsonBusy || csvBusy}
+              onClick={() => {
+                void (async () => {
+                  setCsvBusy(true);
+                  try {
+                    const input = await loadProjectForKmlExport(localId);
+                    if (input) await downloadProjectCsv(input);
+                  } finally {
+                    setCsvBusy(false);
+                  }
+                })();
+              }}
+            >
+              {csvBusy ? "Exportando…" : "CSV"}
             </Button>
             <Link
               href={`/projects/${data.project.localId}/gallery`}
