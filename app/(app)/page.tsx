@@ -2,36 +2,21 @@
 
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { EmptyProjectsHero } from "@/components/dashboard/EmptyProjectsHero";
+import {
+  ProjectSwipeRow,
+  type ProjectSwipeRowData,
+} from "@/components/dashboard/ProjectSwipeRow";
 import { getDb } from "@/lib/db/schema";
 import { formatAreaDisplay } from "@/lib/geo/calculations";
-
-type Row = {
-  projectName: string;
-  projectLocalId: string;
-  locationLabel?: string;
-  updatedAt: Date;
-  status: string;
-  areaLabel: string | null;
-};
 
 export default function DashboardPage() {
   /** Valor por defecto: evita skeleton infinito si la query tarda o falla (p. ej. Safari + IndexedDB). */
   const rows = useLiveQuery(
-    async (): Promise<Row[]> => {
+    async (): Promise<ProjectSwipeRowData[]> => {
       try {
         if (typeof window === "undefined") return [];
         const db = getDb();
@@ -39,7 +24,7 @@ export default function DashboardPage() {
         projects.sort(
           (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
         );
-        const result: Row[] = [];
+        const result: ProjectSwipeRowData[] = [];
         for (const p of projects) {
           const main = await db.polygons
             .where("projectLocalId")
@@ -85,34 +70,7 @@ export default function DashboardPage() {
       {safeRows.length === 0 ? <EmptyProjectsHero /> : null}
 
       {safeRows.map((row) => (
-        <Link key={row.projectLocalId} href={`/projects/${row.projectLocalId}`}>
-          <Card className="border-border bg-card hover:border-primary/50 transition-colors">
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between gap-2">
-                <CardTitle className="text-lg">{row.projectName}</CardTitle>
-                <Badge variant="secondary" className="shrink-0 capitalize">
-                  {row.status.replace("_", " ")}
-                </Badge>
-              </div>
-              {row.locationLabel ? (
-                <CardDescription>{row.locationLabel}</CardDescription>
-              ) : null}
-            </CardHeader>
-            <CardContent className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              <span>
-                Actualizado{" "}
-                {format(row.updatedAt, "d MMM yyyy, HH:mm", { locale: es })}
-              </span>
-              {row.areaLabel ? (
-                <span className="text-primary font-mono font-medium">
-                  Área: {row.areaLabel}
-                </span>
-              ) : (
-                <span className="font-mono">Área: —</span>
-              )}
-            </CardContent>
-          </Card>
-        </Link>
+        <ProjectSwipeRow key={row.projectLocalId} row={row} />
       ))}
 
       <Link

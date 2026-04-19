@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
+import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -28,6 +29,7 @@ import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
 import { FieldPermissionsIntro } from "@/components/onboarding/FieldPermissionsIntro";
 import { analyzeClosedPolygonIssues } from "@/lib/geo/polygonTopology";
 import { ProjectMapExportMenu } from "@/components/project/ProjectMapExportMenu";
+import { DeleteProjectDialog } from "@/components/project/DeleteProjectDialog";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import {
   listSubPolygonsByProject,
@@ -66,6 +68,7 @@ type ProjectDetailData = {
 
 export default function ProjectDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const localId = typeof params.localId === "string" ? params.localId : "";
   const { allowVertexMapDrag } = useMapVertexDrag();
   const highAccuracyGpsDesired = useHighAccuracyGpsDesired();
@@ -94,6 +97,7 @@ export default function ProjectDetailPage() {
   const [selectedPoi, setSelectedPoi] = useState<LocalPOI | null>(null);
   const [subAreasWorkflowEnabled, setSubAreasWorkflowEnabled] =
     useState(false);
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
       try {
@@ -411,6 +415,13 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col">
+      <DeleteProjectDialog
+        open={deleteProjectOpen}
+        onOpenChange={setDeleteProjectOpen}
+        projectLocalId={data.project.localId}
+        projectName={data.project.name}
+        onDeleted={() => router.push("/")}
+      />
       <FieldPermissionsIntro />
       <div className="fixed inset-x-0 top-14 bottom-16 z-10 flex flex-col">
         <MapCanvas
@@ -481,6 +492,16 @@ export default function ProjectDetailPage() {
             >
               Lista
             </Link>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="shadow-md"
+              aria-label="Eliminar proyecto"
+              onClick={() => setDeleteProjectOpen(true)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
           </div>
         </div>
       </div>

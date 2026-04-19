@@ -87,21 +87,60 @@ export async function updateProject(
 export async function deleteProject(localId: string): Promise<void> {
   const db = getDb();
   const proj = await db.projects.get(localId);
-  if (proj?.serverId) {
-    void syncManager.enqueueDelete("project", localId, {
-      serverId: proj.serverId,
-    });
-  }
+  if (!proj) return;
 
   const polygons = await db.polygons
     .where("projectLocalId")
     .equals(localId)
     .toArray();
-  for (const p of polygons) {
-    await db.vertices.where("polygonLocalId").equals(p.localId).delete();
+  const polygonLocalIds = polygons.map((p) => p.localId);
+  const vertexLocalIds: string[] = [];
+  for (const pid of polygonLocalIds) {
+    const verts = await db.vertices.where("polygonLocalId").equals(pid).toArray();
+    vertexLocalIds.push(...verts.map((v) => v.localId));
   }
-  await db.polygons.where("projectLocalId").equals(localId).delete();
-  await db.pois.where("projectLocalId").equals(localId).delete();
-  await db.projectPhotos.where("projectLocalId").equals(localId).delete();
-  await db.projects.delete(localId);
+  const poiRows = await db.pois.where("projectLocalId").equals(localId).toArray();
+  const photoRows = await db.projectPhotos
+    .where("projectLocalId")
+    .equals(localId)
+    .toArray();
+
+  const purgeQueueIds = new Set<string>([
+    localId,
+    ...polygonLocalIds,
+    ...vertexLocalIds,
+    ...poiRows.map((p) => p.localId),
+    ...photoRows.map((p) => p.localId),
+  ]);
+
+  await db.transaction(
+    "rw",
+    [
+      db.syncQueue,
+      db.vertices,
+      db.polygons,
+      db.pois,
+      db.projectPhotos,
+      db.projects,
+    ],
+    async () => {
+      await db.syncQueue
+        .filter((e) => purgeQueueIds.has(e.entityLocalId))
+        .delete();
+
+      for (const pid of polygonLocalIds) {
+        await db.vertices.where("polygonLocalId").equals(pid).delete();
+      }
+      await db.polygons.where("projectLocalId").equals(localId).delete();
+      await db.pois.where("projectLocalId").equals(localId).delete();
+      await db.projectPhotos.where("projectLocalId").equals(localId).delete();
+      await db.projects.delete(localId);
+    },
+  );
+
+  if (proj.serverId) {
+    await syncManager.enqueueDelete("project", localId, {
+      serverId: proj.serverId,
+    });
+  }
 }

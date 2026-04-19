@@ -66,6 +66,18 @@ export function writeLastProjectLocalId(localId: string): void {
   }
 }
 
+/** Limpia la preferencia de “último proyecto” si coincide (p. ej. tras borrar). */
+export function clearLastProjectLocalIdIfMatch(localId: string): void {
+  if (typeof window === "undefined") return;
+  if (readLastProjectLocalId() !== localId) return;
+  try {
+    window.localStorage.removeItem(LAST_PROJECT_LOCAL_ID_STORAGE_KEY);
+    window.dispatchEvent(new Event(LAST_PROJECT_LOCAL_ID_CHANGED_EVENT));
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Desde `/projects/:id` o subrutas; ignora `/projects/new`. */
 export function rememberLastProjectFromPathname(pathname: string): void {
   const m = pathname.match(/^\/projects\/([^/]+)/);
