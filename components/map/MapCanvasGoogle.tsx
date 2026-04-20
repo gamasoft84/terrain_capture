@@ -558,9 +558,6 @@ function GoogleTerrainMap({
 
         {pois.map((poi) => {
           const dragEnabled = Boolean(allowVertexDrag);
-          const selected = Boolean(
-            selectedPoiLocalId && poi.localId === selectedPoiLocalId,
-          );
           return (
             <Marker
               key={poi.localId}
@@ -596,11 +593,11 @@ function GoogleTerrainMap({
               }}
               icon={{
                 path: google.maps.SymbolPath.CIRCLE,
-                scale: selected ? 11 : 10,
+                scale: 10,
                 fillColor: "#fffbeb",
                 fillOpacity: 1,
                 strokeColor: "#d97706",
-                strokeWeight: selected ? 4 : 2,
+                strokeWeight: 2,
               }}
             />
           );

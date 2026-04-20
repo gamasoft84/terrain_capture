@@ -503,9 +503,6 @@ function MapboxTerrainMap({
 
         {pois.map((poi) => {
           const dragEnabled = Boolean(allowVertexDrag);
-          const selected = Boolean(
-            selectedPoiLocalId && poi.localId === selectedPoiLocalId,
-          );
           return (
             <Marker
               key={poi.localId}
@@ -539,10 +536,8 @@ function MapboxTerrainMap({
               <div
                 className={cn(
                   "flex flex-col items-center gap-0.5",
-                  selected &&
-                    "rounded-lg outline outline-2 outline-offset-2 outline-amber-400",
                   dragEnabled
-                    ? "cursor-grab touch-none ring-2 ring-amber-500/80 rounded-lg active:cursor-grabbing"
+                    ? "cursor-grab touch-none active:cursor-grabbing"
                     : "cursor-pointer",
                 )}
               >
@@ -568,11 +563,10 @@ function MapboxTerrainMap({
                   </svg>
                 </div>
                 <div
-                  className="max-w-[5.5rem] truncate rounded border px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
+                  className="border-border max-w-[5.5rem] truncate rounded border px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
                   style={{
                     background: "rgba(255,255,255,0.92)",
                     color: "#171717",
-                    borderColor: "rgba(217,119,6,0.45)",
                   }}
                 >
                   {poi.label}
