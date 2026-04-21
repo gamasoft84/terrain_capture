@@ -508,7 +508,7 @@ function GoogleTerrainMap({
         mapContainerStyle={{ ...mapContainerStyle, ...containerStyle }}
         center={mapView.center}
         zoom={mapView.zoom}
-        mapTypeId={google.maps.MapTypeId.HYBRID}
+        mapTypeId={google.maps.MapTypeId.SATELLITE}
         onLoad={onMapLoad}
         onClick={handleMapClick}
         options={{
