@@ -140,7 +140,7 @@ export default function CapturePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Promediado GPS (1.7)</CardTitle>
+          <CardTitle>Promediado GPS</CardTitle>
           <CardDescription>
             <code>useGPSAveraged</code>: peso 1/accuracy². Objetivo 5 lecturas o
             tope 45 s (lo que ocurra primero).
