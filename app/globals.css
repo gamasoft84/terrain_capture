@@ -135,3 +135,59 @@
 .terrain-map-canvas-root .mapboxgl-ctrl-top-right {
   top: max(5.25rem, calc(env(safe-area-inset-top, 0px) + 4rem)) !important;
 }
+
+/*
+  Google Maps (JS API): las etiquetas de Marker son texto plano del propio mapa.
+  En vista híbrida/satélite sin fondo suelen “desaparecer” frente a Mapbox/MapLibre
+  (HTML + sombra). Estas clases se pasan como MarkerLabel.className.
+*/
+.terrain-gmaps-vertex-label--main,
+.terrain-gmaps-vertex-label--sub,
+.terrain-gmaps-poi-label,
+.terrain-gmaps-edge-label--main,
+.terrain-gmaps-edge-label--sub,
+.terrain-gmaps-area-label {
+  padding: 2px 5px !important;
+  border-radius: 4px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.terrain-gmaps-vertex-label--main {
+  background: rgba(16, 185, 129, 0.92) !important;
+  color: #052e16 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.terrain-gmaps-vertex-label--sub {
+  background: rgba(250, 250, 250, 0.95) !important;
+  color: #171717 !important;
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.65);
+}
+
+.terrain-gmaps-poi-label {
+  background: rgba(255, 251, 235, 0.95) !important;
+  color: #171717 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.terrain-gmaps-edge-label--main {
+  background: rgba(0, 0, 0, 0.72) !important;
+  color: #fff !important;
+  font-family: var(--font-mono), ui-monospace, monospace !important;
+}
+
+.terrain-gmaps-edge-label--sub {
+  background: rgba(69, 26, 3, 0.82) !important;
+  color: #fde68a !important;
+  font-family: var(--font-mono), ui-monospace, monospace !important;
+}
+
+.terrain-gmaps-area-label {
+  background: rgba(10, 15, 13, 0.88) !important;
+  color: #f0fdf4 !important;
+  font-family: var(--font-mono), ui-monospace, monospace !important;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
