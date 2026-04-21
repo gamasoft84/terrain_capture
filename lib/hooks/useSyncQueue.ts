@@ -66,7 +66,8 @@ export function useSyncQueue(): UseSyncQueueResult {
     if (!online || lockRef.current) return;
     lockRef.current = true;
     try {
-      await syncManager.processQueue();
+      // Manual: fuerza reintento aunque haya backoff tras fallos previos.
+      await syncManager.processQueue({ force: true });
       setLastSync(new Date());
     } finally {
       lockRef.current = false;

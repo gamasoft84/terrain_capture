@@ -78,6 +78,14 @@ function readyForRetry(entry: SyncQueueEntry): boolean {
   return Date.now() - entry.lastAttempt.getTime() >= need;
 }
 
+export type ProcessQueueOptions = {
+  /**
+   * Si `true`, reintenta entradas `pending` aunque aún estén en backoff.
+   * Útil para el botón "Sincronizar ahora" cuando el usuario quiere forzar.
+   */
+  force?: boolean;
+};
+
 export class SyncManager {
   private subscribers = new Set<(s: SyncStatusSnapshot) => void>();
 
@@ -205,7 +213,7 @@ export class SyncManager {
     this.notify({ phase: "idle" });
   }
 
-  async processQueue(): Promise<SyncResult> {
+  async processQueue(options: ProcessQueueOptions = {}): Promise<SyncResult> {
     const client = createBrowserSupabaseClient();
     let processed = 0;
     let deferred = 0;
@@ -216,7 +224,7 @@ export class SyncManager {
     let stagnant = 0;
     while (stagnant < 3) {
       const sorted = await fetchPendingSorted();
-      const batch = sorted.filter((e) => readyForRetry(e));
+      const batch = options.force ? sorted : sorted.filter((e) => readyForRetry(e));
       if (batch.length === 0) break;
 
       let progressed = false;
