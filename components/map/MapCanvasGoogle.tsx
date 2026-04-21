@@ -141,6 +141,7 @@ function GoogleTerrainMap({
   const [userPos, setUserPos] = useState<google.maps.LatLngLiteral | null>(
     null,
   );
+  const didAutoCenterEmptyRef = useRef(false);
 
   const dataRef = useRef({
     vertices,
@@ -320,6 +321,23 @@ function GoogleTerrainMap({
       if (id != null) navigator.geolocation.clearWatch(id);
     };
   }, [showUserLocation]);
+
+  // Si no hay geometría (proyecto vacío), al obtener GPS centra el mapa una vez.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    if (hasGeometry) {
+      didAutoCenterEmptyRef.current = false;
+      return;
+    }
+    if (!showUserLocation || !userPos) return;
+    if (didAutoCenterEmptyRef.current) return;
+
+    didAutoCenterEmptyRef.current = true;
+    map.panTo(userPos);
+    map.setZoom(16);
+  }, [mapReady, hasGeometry, showUserLocation, userPos]);
 
   useEffect(() => {
     const map = mapRef.current;

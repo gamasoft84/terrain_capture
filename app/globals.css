@@ -136,6 +136,11 @@
   top: max(5.25rem, calc(env(safe-area-inset-top, 0px) + 4rem)) !important;
 }
 
+/* Google Maps + Tailwind preflight: evita que estilos globales rompan tiles/markers. */
+.terrain-map-canvas-root .gm-style img {
+  max-width: none !important;
+}
+
 /*
   Google Maps (JS API): las etiquetas de Marker son texto plano del propio mapa.
   En vista híbrida/satélite sin fondo suelen “desaparecer” frente a Mapbox/MapLibre
