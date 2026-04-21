@@ -54,6 +54,12 @@ export function ProjectSwipeRow({ row }: ProjectSwipeRowProps) {
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
+      /**
+       * Ratón en web: `setPointerCapture` en el contenedor suele robar el
+       * pointerup al `<Link>` y el clic no navega. El swipe para revelar
+       * “Eliminar” solo en puntero táctil / pen (campo).
+       */
+      if (e.pointerType === "mouse") return;
       const el = e.currentTarget;
       el.setPointerCapture(e.pointerId);
       setIsDragging(true);
