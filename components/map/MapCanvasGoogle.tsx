@@ -552,7 +552,7 @@ function GoogleTerrainMap({
               key={`${variant}-${vertex.localId}`}
               position={{ lat: vertex.latitude, lng: vertex.longitude }}
               draggable={dragEnabled}
-              optimized={false}
+              options={{ optimized: false }}
               label={{
                 text: label,
                 fontSize: "11px",
@@ -561,7 +561,7 @@ function GoogleTerrainMap({
                   variant === "main"
                     ? "terrain-gmaps-vertex-label--main"
                     : "terrain-gmaps-vertex-label--sub",
-              }}
+              } as any}
               onDragEnd={(e) => {
                 const ll = e.latLng;
                 if (!ll || !dragCtx) return;
@@ -600,7 +600,7 @@ function GoogleTerrainMap({
               key={poi.localId}
               position={{ lat: poi.latitude, lng: poi.longitude }}
               draggable={dragEnabled}
-              optimized={false}
+              options={{ optimized: false }}
               onClick={() => {
                 if (poiSkipNextOpenRef.current) {
                   poiSkipNextOpenRef.current = false;
@@ -628,7 +628,7 @@ function GoogleTerrainMap({
                 fontSize: "10px",
                 fontWeight: "600",
                 className: "terrain-gmaps-poi-label",
-              }}
+              } as any}
               icon={{
                 path: google.maps.SymbolPath.CIRCLE,
                 scale: 10,
@@ -650,7 +650,7 @@ function GoogleTerrainMap({
               <Marker
                 key={`edge-m-${i}`}
                 position={{ lat, lng }}
-                optimized={false}
+                options={{ optimized: false }}
                 icon={{
                   path: google.maps.SymbolPath.CIRCLE,
                   scale: 0.01,
@@ -662,7 +662,7 @@ function GoogleTerrainMap({
                   fontSize: "9px",
                   fontWeight: "600",
                   className: "terrain-gmaps-edge-label--main",
-                }}
+                } as any}
               />
             );
           })}
@@ -676,7 +676,7 @@ function GoogleTerrainMap({
               <Marker
                 key={`edge-s-${i}`}
                 position={{ lat, lng }}
-                optimized={false}
+                options={{ optimized: false }}
                 icon={{
                   path: google.maps.SymbolPath.CIRCLE,
                   scale: 0.01,
@@ -688,7 +688,7 @@ function GoogleTerrainMap({
                   fontSize: "9px",
                   fontWeight: "600",
                   className: "terrain-gmaps-edge-label--sub",
-                }}
+                } as any}
               />
             );
           })}
@@ -696,7 +696,7 @@ function GoogleTerrainMap({
         {areaCentroid && areaM2 != null ? (
           <Marker
             position={{ lat: areaCentroid.lat, lng: areaCentroid.lng }}
-            optimized={false}
+            options={{ optimized: false }}
             icon={{
               path: google.maps.SymbolPath.CIRCLE,
               scale: 0.01,
@@ -708,7 +708,7 @@ function GoogleTerrainMap({
               fontSize: "10px",
               fontWeight: "600",
               className: "terrain-gmaps-area-label",
-            }}
+            } as any}
           />
         ) : null}
 
