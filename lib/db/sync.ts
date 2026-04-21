@@ -2,6 +2,7 @@ import type { SyncQueueEntry } from "@/lib/db/schema";
 import { getDb } from "@/lib/db/schema";
 import {
   MAX_PHOTO_UPLOAD_ATTEMPTS,
+  formatSyncError,
   isPhotoUploadExhaustedError,
   isRemoteEntityGoneError,
   type PhotoUploadExhaustedError,
@@ -173,13 +174,13 @@ export class SyncManager {
     const failed = await db.syncQueue.where("status").equals("failed").toArray();
     await db.transaction("rw", db.syncQueue, async () => {
       for (const row of failed) {
-        if ((row.attemptCount ?? 0) >= MAX_ATTEMPTS) continue;
-        if (row.id != null) {
-          await db.syncQueue.update(row.id, {
-            status: "pending",
-            errorMessage: undefined,
-          });
-        }
+        if (row.id == null) continue;
+        await db.syncQueue.update(row.id, {
+          status: "pending",
+          attemptCount: 0,
+          lastAttempt: undefined,
+          errorMessage: undefined,
+        });
       }
     });
     this.notify({ phase: "idle" });
@@ -220,7 +221,7 @@ export class SyncManager {
           stagnant = 0;
           this.notify({ phase: "running", processingId: null });
         } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = formatSyncError(err);
           const nextAttempts = (entry.attemptCount ?? 0) + 1;
           const lastAttempt = new Date();
 
@@ -266,7 +267,7 @@ export class SyncManager {
         const poly = await db.polygons.get(entry.entityLocalId);
         if (!poly) return false;
         const proj = await db.projects.get(poly.projectLocalId);
-        return !!proj?.serverId || entry.action === "create";
+        return !!proj?.serverId;
       }
       case "vertex": {
         const v = await db.vertices.get(entry.entityLocalId);

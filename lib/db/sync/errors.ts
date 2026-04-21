@@ -39,3 +39,28 @@ export function isPhotoUploadExhaustedError(
 ): e is PhotoUploadExhaustedError {
   return e instanceof PhotoUploadExhaustedError;
 }
+
+/** Supabase/PostgREST suele lanzar objetos planos; evita `[object Object]` en la cola. */
+export function formatSyncError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const o = err as Record<string, unknown>;
+    if (typeof o.message === "string" && o.message.length > 0) return o.message;
+    if (typeof o.error === "string" && o.error.length > 0) return o.error;
+    if (typeof o.details === "string" && o.details.length > 0) return o.details;
+    if (typeof o.hint === "string" && o.hint.length > 0) return o.hint;
+    if (typeof o.code === "string" && o.code.length > 0) {
+      try {
+        return JSON.stringify({ code: o.code, message: o.message, details: o.details });
+      } catch {
+        return o.code;
+      }
+    }
+    try {
+      return JSON.stringify(err);
+    } catch {
+      /* fall through */
+    }
+  }
+  return String(err);
+}
