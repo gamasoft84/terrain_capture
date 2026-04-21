@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { CopyableLatLng } from "@/components/geo/CopyableLatLng";
 import { POIForm } from "@/components/capture/POIForm";
 import { formatGeolocationUserMessage } from "@/lib/geo/permissionCopy";
 import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
@@ -207,15 +208,26 @@ export function PoiCaptureSheet({
                 </span>
               </div>
               <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
-                <div
-                  className="bg-primary h-2 rounded-full transition-[width] duration-150"
-                  style={{
-                    width: `${Math.round(averaged.progress * 100)}%`,
-                  }}
+              <div
+                className="bg-primary h-2 rounded-full transition-[width] duration-150"
+                style={{
+                  width: `${Math.round(averaged.progress * 100)}%`,
+                }}
+              />
+            </div>
+            {geo.reading ? (
+              <div className="space-y-1 border-t border-border pt-3">
+                <p className="text-muted-foreground text-[11px] leading-snug">
+                  Lectura actual (entra en el promedio)
+                </p>
+                <CopyableLatLng
+                  latitude={geo.reading.latitude}
+                  longitude={geo.reading.longitude}
                 />
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
+        ) : null}
 
           {phase === "form" && gpsReading ? (
             <POIForm

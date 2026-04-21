@@ -12,6 +12,7 @@ import {
 import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import { useGeolocation } from "@/lib/hooks/useGeolocation";
 import { useGPSAveraged } from "@/lib/hooks/useGPSAveraged";
+import { CopyableLatLng } from "@/components/geo/CopyableLatLng";
 import { FieldPermissionsIntro } from "@/components/onboarding/FieldPermissionsIntro";
 import { formatGeolocationUserMessage } from "@/lib/geo/permissionCopy";
 
@@ -96,9 +97,11 @@ export default function CapturePage() {
             <dl className="font-mono text-xs leading-relaxed sm:text-sm">
               <div className="grid grid-cols-[8rem_1fr] gap-x-2 gap-y-1">
                 <dt className="text-muted-foreground">Lat / Lng</dt>
-                <dd>
-                  {geo.reading.latitude.toFixed(6)},{" "}
-                  {geo.reading.longitude.toFixed(6)}
+                <dd className="min-w-0">
+                  <CopyableLatLng
+                    latitude={geo.reading.latitude}
+                    longitude={geo.reading.longitude}
+                  />
                 </dd>
                 <dt className="text-muted-foreground">Precisión ±m</dt>
                 <dd>{geo.reading.accuracy.toFixed(1)}</dd>
@@ -190,9 +193,11 @@ export default function CapturePage() {
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-x-2 gap-y-1">
                 <dt className="text-muted-foreground">Lat / Lng</dt>
-                <dd>
-                  {averaged.averagedReading.latitude.toFixed(6)},{" "}
-                  {averaged.averagedReading.longitude.toFixed(6)}
+                <dd className="min-w-0">
+                  <CopyableLatLng
+                    latitude={averaged.averagedReading.latitude}
+                    longitude={averaged.averagedReading.longitude}
+                  />
                 </dd>
                 <dt className="text-muted-foreground">Precisión ±m</dt>
                 <dd>{averaged.averagedReading.accuracy.toFixed(1)}</dd>

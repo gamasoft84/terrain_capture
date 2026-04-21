@@ -2,6 +2,7 @@
 
 import { Camera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CopyableLatLng } from "@/components/geo/CopyableLatLng";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -315,6 +316,17 @@ export function CaptureButton({
                   <p className="text-muted-foreground text-center text-xs">
                     Mantén el teléfono estable hasta completar el promedio.
                   </p>
+                ) : null}
+                {geo.reading ? (
+                  <div className="space-y-1 border-t border-border pt-3">
+                    <p className="text-muted-foreground text-[11px] leading-snug">
+                      Lectura actual (entra en el promedio)
+                    </p>
+                    <CopyableLatLng
+                      latitude={geo.reading.latitude}
+                      longitude={geo.reading.longitude}
+                    />
+                  </div>
                 ) : null}
               </div>
             ) : null}

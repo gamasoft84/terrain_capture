@@ -15,6 +15,7 @@ import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetric
 import { createVertex, nextOrderIndexForPolygon } from "@/lib/db/vertices";
 import { confirmIfOutsideMexicoRegion } from "@/lib/geo/mexicoBounds";
 import { extractGpsFromImageFile } from "@/lib/geo/exifGps";
+import { CopyableLatLng } from "@/components/geo/CopyableLatLng";
 import { PhotoSourceInputs } from "@/components/capture/PhotoSourceInputs";
 import {
   accuracyLevelFromMeters,
@@ -182,16 +183,12 @@ export function VertexForm({
         <p className="text-muted-foreground text-xs">
           Coordenadas (estimación GPS, no replanteo geodésico).
         </p>
-        <div className="font-mono text-sm leading-relaxed">
-          <div>
-            <span className="text-muted-foreground">Lat </span>
-            {gpsReading.latitude.toFixed(6)}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Lng </span>
-            {gpsReading.longitude.toFixed(6)}
-          </div>
-          <div className="mt-1 flex items-center gap-2">
+        <div className="text-sm leading-relaxed">
+          <CopyableLatLng
+            latitude={gpsReading.latitude}
+            longitude={gpsReading.longitude}
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-2 font-mono">
             <span className="text-muted-foreground">Precisión</span>
             <span
               className="font-semibold"
@@ -236,13 +233,12 @@ export function VertexForm({
         {file && !exifBusy && exifGps ? (
           <div className="border-border space-y-2 rounded-md border p-3 text-xs">
             <p className="text-muted-foreground">Ubicación en el archivo (EXIF)</p>
-            <p className="font-mono text-sm">
-              <span className="text-muted-foreground">Lat </span>
-              {exifGps.latitude.toFixed(6)}
-              <br />
-              <span className="text-muted-foreground">Lng </span>
-              {exifGps.longitude.toFixed(6)}
-            </p>
+            <CopyableLatLng
+              className="text-sm"
+              copyLabel="Copiar EXIF"
+              latitude={exifGps.latitude}
+              longitude={exifGps.longitude}
+            />
             <fieldset className="space-y-1.5">
               <legend className="sr-only">Fuente de coordenadas al guardar</legend>
               <label className="flex cursor-pointer items-center gap-2">
