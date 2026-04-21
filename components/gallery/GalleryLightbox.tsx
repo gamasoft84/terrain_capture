@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,12 +11,23 @@ function touchDistance(a: Touch, b: Touch): number {
   return Math.hypot(dx, dy);
 }
 
+export type GalleryLightboxNavigation = {
+  /** Texto tipo "3 / 12" */
+  positionLabel: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  hasPrevious: boolean;
+  hasNext: boolean;
+};
+
 export interface GalleryLightboxProps {
   open: boolean;
   imageSrc: string;
   title: string;
   metaLines: string[];
   onClose: () => void;
+  /** Navegación entre fotos (flechas, teclado, swipe sin zoom). */
+  navigation?: GalleryLightboxNavigation;
   /** Error de subida tras reintentos (sync); botón para volver a encolar. */
   photoUploadError?: boolean;
   onRetryPhotoUpload?: () => void;
@@ -25,6 +36,7 @@ export interface GalleryLightboxProps {
 
 const MIN = 1;
 const MAX = 5;
+const SWIPE_MIN_DX = 56;
 
 export function GalleryLightbox({
   open,
@@ -32,6 +44,7 @@ export function GalleryLightbox({
   title,
   metaLines,
   onClose,
+  navigation,
   photoUploadError,
   onRetryPhotoUpload,
   retryPhotoBusy,
@@ -48,6 +61,12 @@ export function GalleryLightbox({
     startY: number;
     origTx: number;
     origTy: number;
+  } | null>(null);
+  const swipeRef = useRef<{
+    x0: number;
+    y0: number;
+    x: number;
+    y: number;
   } | null>(null);
   const gestureRef = useRef<HTMLDivElement>(null);
 
@@ -68,16 +87,30 @@ export function GalleryLightbox({
     setTy(0);
     pinchAnchor.current = null;
     panRef.current = null;
+    swipeRef.current = null;
   }, [open, imageSrc]);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (!navigation) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (navigation.hasPrevious) navigation.onPrevious();
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (navigation.hasNext) navigation.onNext();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, navigation]);
 
   const clampScale = useCallback((s: number) => Math.min(MAX, Math.max(MIN, s)), []);
 
@@ -88,10 +121,12 @@ export function GalleryLightbox({
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
+        swipeRef.current = null;
         const d = touchDistance(e.touches[0], e.touches[1]);
         pinchAnchor.current = { d0: d, s0: scaleRef.current };
         panRef.current = null;
       } else if (e.touches.length === 1 && scaleRef.current > 1) {
+        swipeRef.current = null;
         const t = e.touches[0];
         panRef.current = {
           startX: t.clientX,
@@ -100,11 +135,21 @@ export function GalleryLightbox({
           origTy: tyRef.current,
         };
         pinchAnchor.current = null;
+      } else if (
+        e.touches.length === 1 &&
+        scaleRef.current <= 1 &&
+        navigation
+      ) {
+        const t = e.touches[0];
+        swipeRef.current = { x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY };
+        panRef.current = null;
+        pinchAnchor.current = null;
       }
     };
 
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 2 && pinchAnchor.current) {
+        swipeRef.current = null;
         e.preventDefault();
         const d = touchDistance(e.touches[0], e.touches[1]);
         const { d0, s0 } = pinchAnchor.current;
@@ -115,17 +160,52 @@ export function GalleryLightbox({
         panRef.current &&
         scaleRef.current > 1
       ) {
+        swipeRef.current = null;
         e.preventDefault();
         const t = e.touches[0];
         const p = panRef.current;
         setTx(p.origTx + (t.clientX - p.startX));
         setTy(p.origTy + (t.clientY - p.startY));
+      } else if (
+        e.touches.length === 1 &&
+        swipeRef.current &&
+        scaleRef.current <= 1 &&
+        navigation
+      ) {
+        const t = e.touches[0];
+        swipeRef.current = {
+          ...swipeRef.current,
+          x: t.clientX,
+          y: t.clientY,
+        };
       }
     };
 
     const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) pinchAnchor.current = null;
-      if (e.touches.length === 0) panRef.current = null;
+      if (e.touches.length === 0) {
+        const s = swipeRef.current;
+        swipeRef.current = null;
+        panRef.current = null;
+
+        if (
+          s &&
+          navigation &&
+          scaleRef.current <= 1 &&
+          e.changedTouches.length === 1
+        ) {
+          const t = e.changedTouches[0];
+          const dx = t.clientX - s.x0;
+          const dy = t.clientY - s.y0;
+          if (
+            Math.abs(dx) >= SWIPE_MIN_DX &&
+            Math.abs(dx) > Math.abs(dy) * 1.15
+          ) {
+            if (dx < 0 && navigation.hasNext) navigation.onNext();
+            else if (dx > 0 && navigation.hasPrevious) navigation.onPrevious();
+          }
+        }
+      }
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -156,7 +236,7 @@ export function GalleryLightbox({
       el.removeEventListener("touchcancel", onTouchEnd);
       el.removeEventListener("wheel", onWheel);
     };
-  }, [open, imageSrc, clampScale]);
+  }, [open, imageSrc, clampScale, navigation]);
 
   const zoomIn = useCallback(() => {
     setScale((s) => clampScale(s * 1.25));
@@ -183,7 +263,14 @@ export function GalleryLightbox({
       aria-label={title}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-        <p className="min-w-0 flex-1 truncate text-sm font-medium">{title}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{title}</p>
+          {navigation ? (
+            <p className="text-white/55 mt-0.5 text-[11px] tabular-nums">
+              {navigation.positionLabel}
+            </p>
+          ) : null}
+        </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
             type="button"
@@ -229,6 +316,37 @@ export function GalleryLightbox({
         className="relative min-h-0 flex-1 overflow-hidden"
         style={{ touchAction: "none" }}
       >
+        {navigation ? (
+          <>
+            <Button
+              type="button"
+              size="icon-lg"
+              variant="secondary"
+              disabled={!navigation.hasPrevious}
+              className={cn(
+                "pointer-events-auto absolute top-1/2 left-2 z-10 size-11 -translate-y-1/2 rounded-full border-0 bg-black/55 text-white shadow-lg hover:bg-black/70 disabled:opacity-25",
+              )}
+              aria-label="Foto anterior"
+              onClick={navigation.onPrevious}
+            >
+              <ChevronLeft className="size-7" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              size="icon-lg"
+              variant="secondary"
+              disabled={!navigation.hasNext}
+              className={cn(
+                "pointer-events-auto absolute top-1/2 right-2 z-10 size-11 -translate-y-1/2 rounded-full border-0 bg-black/55 text-white shadow-lg hover:bg-black/70 disabled:opacity-25",
+              )}
+              aria-label="Foto siguiente"
+              onClick={navigation.onNext}
+            >
+              <ChevronRight className="size-7" aria-hidden />
+            </Button>
+          </>
+        ) : null}
+
         <div
           className="flex size-full items-center justify-center overflow-hidden"
           onDoubleClick={() => {
@@ -280,6 +398,9 @@ export function GalleryLightbox({
           Móvil: pellizca para zoom; un dedo arrastra si está ampliado. Escritorio:
           pellizco en trackpad (Ctrl/⌘ + rueda) o botones +/−. Doble clic alterna
           1× / 2×.
+          {navigation
+            ? " Sin zoom: desliza horizontalmente para cambiar de foto, o usa flechas / ← →."
+            : null}
         </p>
         {metaLines.map((line, i) => (
           <p key={i}>{line}</p>

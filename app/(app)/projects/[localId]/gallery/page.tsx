@@ -88,9 +88,7 @@ export default function ProjectGalleryPage() {
   const [filter, setFilter] = useState<GalleryFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
   const [poiCaptureOpen, setPoiCaptureOpen] = useState(false);
-  const [lightboxItem, setLightboxItem] = useState<ProjectGalleryItem | null>(
-    null,
-  );
+  const [lightboxKey, setLightboxKey] = useState<string | null>(null);
   const [lightboxBlobUrl, setLightboxBlobUrl] = useState<string | null>(null);
   const [retryPhotoBusy, setRetryPhotoBusy] = useState(false);
 
@@ -114,23 +112,72 @@ export default function ProjectGalleryPage() {
     return items.filter((i) => i.origin === filter);
   }, [data, filter]);
 
-  const openLightbox = useCallback((item: ProjectGalleryItem) => {
+  const lightboxIndex = useMemo(() => {
+    if (!lightboxKey) return -1;
+    return filtered.findIndex((i) => i.key === lightboxKey);
+  }, [lightboxKey, filtered]);
+
+  const lightboxItem =
+    lightboxIndex >= 0 ? filtered[lightboxIndex]! : null;
+
+  useEffect(() => {
+    if (!lightboxKey) return;
+    if (!filtered.some((i) => i.key === lightboxKey)) {
+      setLightboxKey(null);
+      setLightboxBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    }
+  }, [lightboxKey, filtered]);
+
+  useEffect(() => {
+    if (!lightboxItem) {
+      setLightboxBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
     setLightboxBlobUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
-      if (item.photoUrl?.trim()) return null;
-      const b = blobFromStored(item);
+      if (lightboxItem.photoUrl?.trim()) return null;
+      const b = blobFromStored(lightboxItem);
       return b ? URL.createObjectURL(b) : null;
     });
-    setLightboxItem(item);
-  }, []);
+  }, [lightboxItem?.key, lightboxItem?.photoUrl]);
+
+  const openLightbox = useCallback((item: ProjectGalleryItem) => {
+    const idx = filtered.findIndex((i) => i.key === item.key);
+    if (idx < 0) return;
+    setLightboxKey(item.key);
+  }, [filtered]);
 
   const closeLightbox = useCallback(() => {
-    setLightboxItem(null);
+    setLightboxKey(null);
     setLightboxBlobUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
   }, []);
+
+  const goLightboxPrev = useCallback(() => {
+    setLightboxKey((k) => {
+      if (!k) return null;
+      const i = filtered.findIndex((x) => x.key === k);
+      if (i <= 0) return k;
+      return filtered[i - 1]!.key;
+    });
+  }, [filtered]);
+
+  const goLightboxNext = useCallback(() => {
+    setLightboxKey((k) => {
+      if (!k) return null;
+      const i = filtered.findIndex((x) => x.key === k);
+      if (i < 0 || i >= filtered.length - 1) return k;
+      return filtered[i + 1]!.key;
+    });
+  }, [filtered]);
 
   const lightboxSrc =
     lightboxItem?.photoUrl ?? lightboxBlobUrl ?? "";
@@ -267,6 +314,17 @@ export default function ProjectGalleryPage() {
           title={lightboxItem.originLabel}
           metaLines={lightboxMeta}
           onClose={closeLightbox}
+          navigation={
+            filtered.length > 1
+              ? {
+                  positionLabel: `${lightboxIndex + 1} / ${filtered.length}`,
+                  hasPrevious: lightboxIndex > 0,
+                  hasNext: lightboxIndex < filtered.length - 1,
+                  onPrevious: goLightboxPrev,
+                  onNext: goLightboxNext,
+                }
+              : undefined
+          }
           photoUploadError={
             lightboxItem.syncStatus === "error" &&
             lightboxItem.syncErrorReason === "photo_upload"
