@@ -438,8 +438,12 @@ export default function ProjectDetailPage() {
           }
           onPoiMarkerClick={openPoiDetail}
           showUserLocation
-          initialCenter={emptyProjectUserCenter ?? undefined}
-          initialZoom={emptyProjectUserCenter ? 16 : undefined}
+          initialCenter={
+            isEmptyProjectMap ? emptyProjectUserCenter ?? undefined : undefined
+          }
+          initialZoom={
+            isEmptyProjectMap && emptyProjectUserCenter ? 16 : undefined
+          }
           allowVertexDrag={allowVertexMapDrag}
           resolveVertexDragTarget={resolveVertexDragTarget}
         />

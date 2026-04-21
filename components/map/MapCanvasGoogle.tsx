@@ -66,11 +66,13 @@ function fitBoundsWithCap(
   bounds: google.maps.LatLngBounds,
   padding: google.maps.Padding,
   maxZoom = 18,
+  onAfterIdle?: (map: google.maps.Map) => void,
 ): void {
   map.fitBounds(withMinimumSpanBounds(bounds), padding);
   google.maps.event.addListenerOnce(map, "idle", () => {
     const z = map.getZoom();
     if (z != null && z > maxZoom) map.setZoom(maxZoom);
+    onAfterIdle?.(map);
   });
 }
 
@@ -141,7 +143,15 @@ function GoogleTerrainMap({
   const [userPos, setUserPos] = useState<google.maps.LatLngLiteral | null>(
     null,
   );
-  const didAutoCenterEmptyRef = useRef(false);
+  /**
+   * `GoogleMap` re-centra en cada render si `center`/`zoom` vienen del padre.
+   * Con geometría, el padre suele pasar GPS (`emptyProjectUserCenter`) y anula
+   * `fitBounds`. Mantenemos vista propia: seguimos props solo sin geometría.
+   */
+  const [mapView, setMapView] = useState(() => ({
+    center: { lat: initialCenter[1], lng: initialCenter[0] },
+    zoom: initialZoom,
+  }));
 
   const dataRef = useRef({
     vertices,
@@ -295,6 +305,23 @@ function GoogleTerrainMap({
 
   const hasGeometry = allBoundsPoints.length > 0;
 
+  useLayoutEffect(() => {
+    if (hasGeometry) return;
+    setMapView({
+      center: { lat: initialCenter[1], lng: initialCenter[0] },
+      zoom: initialZoom,
+    });
+  }, [hasGeometry, initialCenter, initialZoom]);
+
+  const syncMapViewFromMap = useCallback((map: google.maps.Map) => {
+    const c = map.getCenter();
+    if (!c) return;
+    setMapView({
+      center: { lat: c.lat(), lng: c.lng() },
+      zoom: map.getZoom() ?? DEFAULT_ZOOM,
+    });
+  }, []);
+
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     setMapReady(true);
@@ -322,23 +349,6 @@ function GoogleTerrainMap({
     };
   }, [showUserLocation]);
 
-  // Si no hay geometría (proyecto vacío), al obtener GPS centra el mapa una vez.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapReady) return;
-
-    if (hasGeometry) {
-      didAutoCenterEmptyRef.current = false;
-      return;
-    }
-    if (!showUserLocation || !userPos) return;
-    if (didAutoCenterEmptyRef.current) return;
-
-    didAutoCenterEmptyRef.current = true;
-    map.panTo(userPos);
-    map.setZoom(16);
-  }, [mapReady, hasGeometry, showUserLocation, userPos]);
-
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
@@ -349,8 +359,10 @@ function GoogleTerrainMap({
       vertexCountForFitRef.current = -1;
       didFitForCurrentVertexSetRef.current = false;
       const { initialCenter: ic, initialZoom: iz } = mountOptsRef.current;
-      map.panTo({ lat: ic[1], lng: ic[0] });
+      const c = { lat: ic[1], lng: ic[0] };
+      map.panTo(c);
       map.setZoom(iz);
+      setMapView({ center: c, zoom: iz });
       return;
     }
 
@@ -362,7 +374,7 @@ function GoogleTerrainMap({
     const padding = { top: pad, right: pad, bottom: pad, left: pad };
 
     if (!allowVertexDrag) {
-      fitBoundsWithCap(map, bounds, padding);
+      fitBoundsWithCap(map, bounds, padding, 18, syncMapViewFromMap);
       return;
     }
 
@@ -372,7 +384,7 @@ function GoogleTerrainMap({
       didFitForCurrentVertexSetRef.current = false;
     }
     if (!didFitForCurrentVertexSetRef.current) {
-      fitBoundsWithCap(map, bounds, padding);
+      fitBoundsWithCap(map, bounds, padding, 18, syncMapViewFromMap);
       didFitForCurrentVertexSetRef.current = true;
     }
   }, [
@@ -385,6 +397,7 @@ function GoogleTerrainMap({
     vertices,
     initialCenter,
     initialZoom,
+    syncMapViewFromMap,
   ]);
 
   useEffect(() => {
@@ -493,8 +506,8 @@ function GoogleTerrainMap({
     >
       <GoogleMap
         mapContainerStyle={{ ...mapContainerStyle, ...containerStyle }}
-        center={{ lat: initialCenter[1], lng: initialCenter[0] }}
-        zoom={initialZoom}
+        center={mapView.center}
+        zoom={mapView.zoom}
         mapTypeId={google.maps.MapTypeId.HYBRID}
         onLoad={onMapLoad}
         onClick={handleMapClick}
