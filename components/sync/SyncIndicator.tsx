@@ -9,6 +9,7 @@ import {
   Cloud,
   Loader2,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -68,16 +69,29 @@ function QueueRows() {
             <span className="font-mono font-medium">
               {row.entityType} · {row.action}
             </span>
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.5 font-medium",
-                row.status === "failed" && "bg-destructive/20 text-destructive",
-                row.status === "pending" && "bg-primary/15 text-primary",
-                row.status === "processing" && "bg-muted text-foreground",
-              )}
-            >
-              {statusLabel(row.status)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 font-medium",
+                  row.status === "failed" && "bg-destructive/20 text-destructive",
+                  row.status === "pending" && "bg-primary/15 text-primary",
+                  row.status === "processing" && "bg-muted text-foreground",
+                )}
+              >
+                {statusLabel(row.status)}
+              </span>
+              {row.id != null ? (
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center rounded p-1 transition-colors"
+                  onClick={() => void syncManager.deleteQueueEntry(row.id as number)}
+                  aria-label="Eliminar de la cola"
+                  title="Eliminar de la cola"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              ) : null}
+            </div>
           </div>
           <p className="text-muted-foreground mt-1 break-all font-mono text-[11px]">
             {row.entityLocalId}
@@ -222,6 +236,15 @@ export function SyncIndicator() {
                   Reintentar fallidos
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 sm:flex-none"
+                disabled={isSyncing}
+                onClick={() => void syncManager.clearQueue()}
+              >
+                Vaciar cola
+              </Button>
             </div>
           </SheetFooter>
         </SheetContent>

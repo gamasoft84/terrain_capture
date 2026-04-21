@@ -186,6 +186,25 @@ export class SyncManager {
     this.notify({ phase: "idle" });
   }
 
+  async deleteQueueEntry(id: number): Promise<void> {
+    await getDb().syncQueue.delete(id);
+    this.notify({ phase: "idle" });
+  }
+
+  async clearQueue(statuses?: Array<SyncQueueEntry["status"]>): Promise<void> {
+    const db = getDb();
+    const toClear = statuses?.length
+      ? await db.syncQueue.where("status").anyOf(statuses).toArray()
+      : await db.syncQueue.toArray();
+
+    await db.transaction("rw", db.syncQueue, async () => {
+      for (const row of toClear) {
+        if (row.id != null) await db.syncQueue.delete(row.id);
+      }
+    });
+    this.notify({ phase: "idle" });
+  }
+
   async processQueue(): Promise<SyncResult> {
     const client = createBrowserSupabaseClient();
     let processed = 0;
