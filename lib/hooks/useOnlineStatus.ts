@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const ACTIVE_TIMEOUT_MS = 3000;
+/** Redes móviles lentas o al volver de segundo plano: evita falsos “sin Supabase”. */
+const ACTIVE_TIMEOUT_MS = 6000;
 
 function restProbeUrl(baseUrl: string): string {
   const b = baseUrl.replace(/\/+$/, "");
@@ -36,7 +37,13 @@ async function probeSupabaseReachable(): Promise<boolean> {
       signal: ac.signal,
       cache: "no-store",
     });
-    return res.ok && res.status >= 200 && res.status < 300;
+    /**
+     * Cualquier respuesta HTTP indica que el host de Supabase es alcanzable.
+     * Con RLS estricta, 401/403/404 son habituales; antes `res.ok` marcaba
+     * “offline” y bloqueaba toda la cola de sync en móvil y escritorio.
+     */
+    await res.arrayBuffer();
+    return true;
   } catch {
     return false;
   } finally {
@@ -84,9 +91,14 @@ export function useOnlineStatus(activePollMs = 25_000): OnlineStatusDetail {
     window.addEventListener("offline", syncBrowser);
     void runProbe();
     const poll = window.setInterval(() => void runProbe(), activePollMs);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void runProbe();
+    };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       window.removeEventListener("online", syncBrowser);
       window.removeEventListener("offline", syncBrowser);
+      document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(poll);
     };
   }, [runProbe, activePollMs]);

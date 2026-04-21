@@ -214,71 +214,86 @@ export class SyncManager {
   }
 
   async processQueue(options: ProcessQueueOptions = {}): Promise<SyncResult> {
-    const client = createBrowserSupabaseClient();
+    const db = getDb();
+    /**
+     * Si el navegador cerró la pestaña a mitad de sync, la fila puede quedar en
+     * `processing` y ya no entra en `fetchPendingSorted` (solo `pending`).
+     */
+    await db.syncQueue.where("status").equals("processing").modify({
+      status: "pending",
+    });
+
+    this.notify({ phase: "running", processingId: null });
+
     let processed = 0;
     let deferred = 0;
     let failedThisRun = 0;
 
-    this.notify({ phase: "running", processingId: null });
+    try {
+      const client = createBrowserSupabaseClient();
 
-    let stagnant = 0;
-    while (stagnant < 3) {
-      const sorted = await fetchPendingSorted();
-      const batch = options.force ? sorted : sorted.filter((e) => readyForRetry(e));
-      if (batch.length === 0) break;
+      let stagnant = 0;
+      while (stagnant < 3) {
+        const sorted = await fetchPendingSorted();
+        const batch = options.force
+          ? sorted
+          : sorted.filter((e) => readyForRetry(e));
+        if (batch.length === 0) break;
 
-      let progressed = false;
+        let progressed = false;
 
-      for (const entry of batch) {
-        if (entry.id == null) continue;
-        const can = await this.canProcess(entry);
-        if (!can) {
-          deferred++;
-          continue;
-        }
-
-        await getDb().syncQueue.update(entry.id, { status: "processing" });
-        this.notify({ phase: "running", processingId: entry.id });
-
-        try {
-          await this.applyEntryWithConflictHandling(client, entry);
-          await getDb().syncQueue.delete(entry.id);
-          processed++;
-          progressed = true;
-          stagnant = 0;
-          this.notify({ phase: "running", processingId: null });
-        } catch (err) {
-          const msg = formatSyncError(err);
-          const nextAttempts = (entry.attemptCount ?? 0) + 1;
-          const lastAttempt = new Date();
-
-          if (nextAttempts >= MAX_ATTEMPTS) {
-            await getDb().syncQueue.update(entry.id, {
-              status: "failed",
-              attemptCount: nextAttempts,
-              lastAttempt,
-              errorMessage: msg,
-            });
-          } else {
-            await getDb().syncQueue.update(entry.id, {
-              status: "pending",
-              attemptCount: nextAttempts,
-              lastAttempt,
-              errorMessage: msg,
-            });
+        for (const entry of batch) {
+          if (entry.id == null) continue;
+          const can = await this.canProcess(entry);
+          if (!can) {
+            deferred++;
+            continue;
           }
-          failedThisRun++;
-          progressed = true;
-          stagnant = 0;
-          this.notify({ phase: "running", processingId: null, lastError: msg });
+
+          await getDb().syncQueue.update(entry.id, { status: "processing" });
+          this.notify({ phase: "running", processingId: entry.id });
+
+          try {
+            await this.applyEntryWithConflictHandling(client, entry);
+            await getDb().syncQueue.delete(entry.id);
+            processed++;
+            progressed = true;
+            stagnant = 0;
+            this.notify({ phase: "running", processingId: null });
+          } catch (err) {
+            const msg = formatSyncError(err);
+            const nextAttempts = (entry.attemptCount ?? 0) + 1;
+            const lastAttempt = new Date();
+
+            if (nextAttempts >= MAX_ATTEMPTS) {
+              await getDb().syncQueue.update(entry.id, {
+                status: "failed",
+                attemptCount: nextAttempts,
+                lastAttempt,
+                errorMessage: msg,
+              });
+            } else {
+              await getDb().syncQueue.update(entry.id, {
+                status: "pending",
+                attemptCount: nextAttempts,
+                lastAttempt,
+                errorMessage: msg,
+              });
+            }
+            failedThisRun++;
+            progressed = true;
+            stagnant = 0;
+            this.notify({ phase: "running", processingId: null, lastError: msg });
+          }
         }
+
+        if (!progressed) stagnant++;
       }
 
-      if (!progressed) stagnant++;
+      return { processed, deferred, failedThisRun };
+    } finally {
+      this.notify({ phase: "idle", processingId: null });
     }
-
-    this.notify({ phase: "idle", processingId: null });
-    return { processed, deferred, failedThisRun };
   }
 
   private async canProcess(entry: SyncQueueEntry): Promise<boolean> {

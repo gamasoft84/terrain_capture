@@ -92,6 +92,17 @@ export function useSyncQueue(): UseSyncQueueResult {
     return () => window.clearInterval(id);
   }, [online, pendingCount, syncNow]);
 
+  /** iOS/Android: al volver a primer plano, iOS suele aplazar timers; forzamos un ciclo. */
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!online || pendingCount === 0) return;
+      void syncNow();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [online, pendingCount, syncNow]);
+
   return {
     pendingCount,
     failedCount,
