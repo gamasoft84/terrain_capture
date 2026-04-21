@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terrain Capture — Preview de íconos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ede6d6;
+    --ink: #1a1d14;
+    --accent: #7a8a4a;
+    --rule: rgba(26, 29, 20, 0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    padding: 48px 32px 96px;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 30% 20%, rgba(122, 138, 74, 0.08), transparent 60%),
+      radial-gradient(circle at 70% 80%, rgba(26, 29, 20, 0.05), transparent 60%);
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  header {
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 24px;
+    margin-bottom: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .eyebrow {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(36px, 5vw, 64px);
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+  }
+  h1 em { font-style: italic; color: #8a5a1f; }
+  .header-meta {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #555;
+    text-align: right;
+  }
+
+  .section {
+    margin-bottom: 64px;
+  }
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+  h2 em { font-style: italic; color: #8a5a1f; }
+  .section-desc {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 24px;
+    max-width: 540px;
+    line-height: 1.6;
+  }
+
+  /* ====== DEVICE MOCKUPS ====== */
+  .mockups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .mockup {
+    background: #fff;
+    border: 1px solid var(--rule);
+    padding: 24px;
+    border-radius: 12px;
+  }
+  .mockup-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #666;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* iOS home screen */
+  .ios-screen {
+    background: linear-gradient(180deg, #3a5a7a 0%, #5a8ab5 60%, #d9a580 100%);
+    border-radius: 24px;
+    padding: 40px 20px 20px;
+    aspect-ratio: 9/16;
+    position: relative;
+    overflow: hidden;
+  }
+  .ios-notch {
+    width: 120px;
+    height: 28px;
+    background: #000;
+    border-radius: 0 0 16px 16px;
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+  }
+  .ios-apps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px 8px;
+    margin-top: 20px;
+  }
+  .ios-app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .ios-app img, .ios-app .fake {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .ios-app .fake {
+    background: linear-gradient(135deg, #ff7a5c, #ff4a8d);
+  }
+  .ios-app .fake-2 { background: linear-gradient(135deg, #5ac8fa, #007aff); }
+  .ios-app .fake-3 { background: linear-gradient(135deg, #34c759, #30d158); }
+  .ios-app .fake-4 { background: linear-gradient(135deg, #ffcc00, #ff9500); }
+  .ios-app .fake-5 { background: linear-gradient(135deg, #af52de, #5856d6); }
+  .ios-app .fake-6 { background: #1c1c1e; }
+  .ios-app .fake-7 { background: linear-gradient(135deg, #ff2d55, #ff3b30); }
+  .ios-app-name {
+    color: #fff;
+    font-size: 9px;
+    font-family: -apple-system, system-ui, sans-serif;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .ios-app.highlight img {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.6), 0 4px 16px rgba(0,0,0,0.4);
+  }
+
+  /* Android home screen - más oscuro, estilo Material */
+  .android-screen {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 24px;
+    padding: 40px 20px 20px;
+    aspect-ratio: 9/16;
+    position: relative;
+    overflow: hidden;
+  }
+  .android-status {
+    color: #fff;
+    font-size: 10px;
+    font-family: 'Roboto', system-ui, sans-serif;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 8px 20px;
+    opacity: 0.9;
+  }
+  .android-apps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px 8px;
+  }
+  .android-app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  /* Android masks the icon into a circle */
+  .android-app .icon-circle, .android-app .fake-circle {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .android-app .icon-circle img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .android-app .fake-circle { background: #ea4335; }
+  .android-app .fake-circle.c2 { background: #4285f4; }
+  .android-app .fake-circle.c3 { background: #34a853; }
+  .android-app .fake-circle.c4 { background: #fbbc04; }
+  .android-app .fake-circle.c5 { background: #ff6d01; }
+  .android-app .fake-circle.c6 { background: #9c27b0; }
+  .android-app .fake-circle.c7 { background: #00bcd4; }
+  .android-app-name {
+    color: #fff;
+    font-size: 9px;
+    font-family: 'Roboto', system-ui, sans-serif;
+  }
+
+  /* Browser tab mockup */
+  .browser {
+    background: #f0efed;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+  }
+  .browser-bar {
+    background: #e8e6e3;
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .browser-dots {
+    display: flex; gap: 6px;
+  }
+  .browser-dots span {
+    width: 12px; height: 12px; border-radius: 50%;
+  }
+  .browser-dots span:nth-child(1) { background: #ff5f57; }
+  .browser-dots span:nth-child(2) { background: #febc2e; }
+  .browser-dots span:nth-child(3) { background: #28c840; }
+  .browser-tabs {
+    display: flex; gap: 2px; padding: 8px 8px 0;
+    background: #e8e6e3;
+  }
+  .tab {
+    background: #d5d3cf;
+    padding: 8px 12px;
+    border-radius: 8px 8px 0 0;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px;
+    font-family: system-ui, sans-serif;
+    color: #333;
+  }
+  .tab.active {
+    background: #fff;
+    font-weight: 500;
+  }
+  .tab img {
+    width: 16px; height: 16px;
+  }
+  .tab .close {
+    opacity: 0.5;
+    font-size: 12px;
+  }
+  .browser-content {
+    background: #fff;
+    padding: 32px;
+    min-height: 160px;
+    font-family: system-ui, sans-serif;
+    font-size: 12px;
+    color: #666;
+  }
+  .url-bar {
+    flex: 1;
+    background: #fff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: #666;
+    font-family: system-ui, sans-serif;
+  }
+
+  /* ====== SIZE SCALE ====== */
+  .size-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    align-items: flex-end;
+    padding: 32px;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .size-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .size-item img {
+    display: block;
+  }
+  .size-label {
+    font-size: 10px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* ====== FILE LIST ====== */
+  .files {
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .file-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto auto;
+    gap: 16px;
+    padding: 12px 20px;
+    align-items: center;
+    font-size: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .file-row:last-child { border-bottom: none; }
+  .file-row img {
+    width: 32px; height: 32px;
+    object-fit: contain;
+  }
+  .file-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+  .file-purpose {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #666;
+    padding: 3px 8px;
+    background: #f0ede4;
+    border-radius: 4px;
+  }
+  .file-size {
+    font-size: 10px;
+    color: #888;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Palette strip */
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .swatch-card {
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .swatch-color {
+    aspect-ratio: 2/1;
+    width: 100%;
+  }
+  .swatch-info {
+    padding: 12px;
+    font-size: 11px;
+  }
+  .swatch-hex {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .swatch-role {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #888;
+    margin-top: 4px;
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--ink);
+    text-align: center;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #666;
+  }
+  footer em {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    display: block;
+    margin: 8px 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div>
+      <span class="eyebrow">Paquete de íconos PWA · Serie 01</span>
+      <h1>Terrain <em>Capture</em></h1>
+    </div>
+    <div class="header-meta">
+      <div>Diseño: <strong>Aperture Ridge</strong></div>
+      <div>23 archivos generados</div>
+      <div>SVG · PNG · ICO</div>
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <div class="section">
+    <h2>En contexto <em>real</em></h2>
+    <p class="section-desc">Así se verá el ícono en la home screen de distintos sistemas operativos, y como favicon en el navegador.</p>
+
+    <div class="mockups">
+
+      <!-- iOS Mockup -->
+      <div class="mockup">
+        <div class="mockup-label"><span>iOS · Home Screen</span><span>Apple Touch Icon</span></div>
+        <div class="ios-screen">
+          <div class="ios-notch"></div>
+          <div class="ios-apps">
+            <div class="ios-app"><div class="fake"></div><span class="ios-app-name">Mensajes</span></div>
+            <div class="ios-app"><div class="fake fake-2"></div><span class="ios-app-name">Safari</span></div>
+            <div class="ios-app"><div class="fake fake-3"></div><span class="ios-app-name">WhatsApp</span></div>
+            <div class="ios-app"><div class="fake fake-4"></div><span class="ios-app-name">Cámara</span></div>
+            <div class="ios-app"><div class="fake fake-5"></div><span class="ios-app-name">Música</span></div>
+            <div class="ios-app highlight"><img src="icons/apple-touch-icon.png" alt=""><span class="ios-app-name">Terrain</span></div>
+            <div class="ios-app"><div class="fake fake-6"></div><span class="ios-app-name">Notas</span></div>
+            <div class="ios-app"><div class="fake fake-7"></div><span class="ios-app-name">Fotos</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Android Mockup -->
+      <div class="mockup">
+        <div class="mockup-label"><span>Android · Adaptive</span><span>Maskable (circle)</span></div>
+        <div class="android-screen">
+          <div class="android-status">
+            <span>9:41</span>
+            <span>●●● 100%</span>
+          </div>
+          <div class="android-apps">
+            <div class="android-app"><div class="fake-circle">G</div><span class="android-app-name">Gmail</span></div>
+            <div class="android-app"><div class="fake-circle c2"></div><span class="android-app-name">Chrome</span></div>
+            <div class="android-app"><div class="fake-circle c3"></div><span class="android-app-name">Maps</span></div>
+            <div class="android-app"><div class="fake-circle c4"></div><span class="android-app-name">Drive</span></div>
+            <div class="android-app"><div class="icon-circle"><img src="icons/icon-maskable-192.png" alt=""></div><span class="android-app-name">Terrain</span></div>
+            <div class="android-app"><div class="fake-circle c5"></div><span class="android-app-name">Fotos</span></div>
+            <div class="android-app"><div class="fake-circle c6"></div><span class="android-app-name">Música</span></div>
+            <div class="android-app"><div class="fake-circle c7"></div><span class="android-app-name">YouTube</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Browser Mockup -->
+      <div class="mockup">
+        <div class="mockup-label"><span>Navegador · Pestaña</span><span>Favicon</span></div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="url-bar">🔒 terrain-capture.app</div>
+          </div>
+          <div class="browser-tabs">
+            <div class="tab">
+              <div style="width:16px; height:16px; background:linear-gradient(135deg,#4285f4,#0f9d58); border-radius:3px;"></div>
+              <span>Gmail</span>
+              <span class="close">×</span>
+            </div>
+            <div class="tab active">
+              <img src="icons/icon-32.png" alt="">
+              <span>Terrain Capture</span>
+              <span class="close">×</span>
+            </div>
+            <div class="tab">
+              <div style="width:16px; height:16px; background:#000; border-radius:3px;"></div>
+              <span>GitHub</span>
+            </div>
+          </div>
+          <div class="browser-content">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+              <img src="icons/icon-48.png" alt="" width="32" height="32">
+              <div>
+                <div style="font-weight:600; color:#1a1d14;">Terrain Capture</div>
+                <div style="font-size:10px; color:#888;">Captura y mapea terrenos costeros</div>
+              </div>
+            </div>
+            <div style="font-size:10px; color:#aaa; font-family:'JetBrains Mono',monospace; margin-top:16px;">&lt;link rel="icon" href="/icons/favicon.ico"&gt;</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <div class="section">
+    <h2>Escala de <em>legibilidad</em></h2>
+    <p class="section-desc">El ícono debe seguir siendo reconocible incluso al tamaño más pequeño. Aquí todos los tamaños en línea:</p>
+
+    <div class="size-grid">
+      <div class="size-item"><img src="icons/icon-16.png" width="16" height="16" alt=""><span class="size-label">16</span></div>
+      <div class="size-item"><img src="icons/icon-32.png" width="32" height="32" alt=""><span class="size-label">32</span></div>
+      <div class="size-item"><img src="icons/icon-48.png" width="48" height="48" alt=""><span class="size-label">48</span></div>
+      <div class="size-item"><img src="icons/icon-72.png" width="72" height="72" alt=""><span class="size-label">72</span></div>
+      <div class="size-item"><img src="icons/icon-96.png" width="96" height="96" alt=""><span class="size-label">96</span></div>
+      <div class="size-item"><img src="icons/icon-128.png" width="128" height="128" alt=""><span class="size-label">128</span></div>
+      <div class="size-item"><img src="icons/icon-192.png" width="180" height="180" alt=""><span class="size-label">192</span></div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <div class="section">
+    <h2>Tres <em>variantes</em></h2>
+    <p class="section-desc">El manifest necesita tres propósitos distintos: <code>any</code> (uso general), <code>maskable</code> (Android adaptive) y <code>monochrome</code> (Safari mask-icon, Android tint).</p>
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+
+      <div class="mockup">
+        <div class="mockup-label"><span>Any</span><span>purpose: any</span></div>
+        <div style="background:#f0ede4; padding:32px; border-radius:8px; display:flex; justify-content:center;">
+          <img src="icons/icon-256.png" width="180" height="180" alt="">
+        </div>
+        <p style="font-size:11px; color:#666; margin-top:12px; line-height:1.5;">Diseño completo con fondo y bordes redondeados. Favicon, tabs, share.</p>
+      </div>
+
+      <div class="mockup">
+        <div class="mockup-label"><span>Maskable</span><span>purpose: maskable</span></div>
+        <div style="background:#f0ede4; padding:32px; border-radius:8px; display:flex; justify-content:center; position:relative;">
+          <img src="icons/icon-maskable-512.png" width="180" height="180" alt="" style="border-radius:50%;">
+          <div style="position:absolute; inset:32px; border:2px dashed rgba(0,0,0,0.15); border-radius:50%; pointer-events:none;"></div>
+        </div>
+        <p style="font-size:11px; color:#666; margin-top:12px; line-height:1.5;">Contenido al 78 % central. Android recorta en círculo, squircle, trébol, etc.</p>
+      </div>
+
+      <div class="mockup">
+        <div class="mockup-label"><span>Monochrome</span><span>purpose: monochrome</span></div>
+        <div style="background:#7a8a4a; padding:32px; border-radius:8px; display:flex; justify-content:center;">
+          <img src="icons/icon-monochrome-512.png" width="180" height="180" alt="" style="filter: invert(1);">
+        </div>
+        <p style="font-size:11px; color:#666; margin-top:12px; line-height:1.5;">Silueta tintable. Usada en Safari pinned tab y Android themed icons.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <div class="section">
+    <h2>Paleta <em>oficial</em></h2>
+    <p class="section-desc">Guárdalos como tokens en tu design system. El <code>theme-color</code> del manifest usa el primero.</p>
+
+    <div class="palette">
+      <div class="swatch-card">
+        <div class="swatch-color" style="background:#1a1d14"></div>
+        <div class="swatch-info">
+          <div class="swatch-hex">#1a1d14</div>
+          <div class="swatch-role">Terrain Night</div>
+        </div>
+      </div>
+      <div class="swatch-card">
+        <div class="swatch-color" style="background:#2c3225"></div>
+        <div class="swatch-info">
+          <div class="swatch-hex">#2c3225</div>
+          <div class="swatch-role">Night Soft</div>
+        </div>
+      </div>
+      <div class="swatch-card">
+        <div class="swatch-color" style="background:#7a8a4a"></div>
+        <div class="swatch-info">
+          <div class="swatch-hex">#7a8a4a</div>
+          <div class="swatch-role">Moss</div>
+        </div>
+      </div>
+      <div class="swatch-card">
+        <div class="swatch-color" style="background:#c9d4a8"></div>
+        <div class="swatch-info">
+          <div class="swatch-hex">#c9d4a8</div>
+          <div class="swatch-role">Sage</div>
+        </div>
+      </div>
+      <div class="swatch-card">
+        <div class="swatch-color" style="background:#f2cb53"></div>
+        <div class="swatch-info">
+          <div class="swatch-hex">#f2cb53</div>
+          <div class="swatch-role">Dawn</div>
+        </div>
+      </div>
+      <div class="swatch-card">
+        <div class="swatch-color" style="background:#f2f0d5"></div>
+        <div class="swatch-info">
+          <div class="swatch-hex">#f2f0d5</div>
+          <div class="swatch-role">Fog</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <div class="section">
+    <h2>Archivos <em>del paquete</em></h2>
+    <p class="section-desc">23 archivos listos para copiar a <code>public/icons/</code> en tu proyecto.</p>
+
+    <div class="files">
+      <div class="file-row"><img src="icons/icon.svg" alt=""><span class="file-name">icon.svg</span><span class="file-purpose">Any</span><span class="file-size">vector</span></div>
+      <div class="file-row"><img src="icons/icon-maskable.svg" alt=""><span class="file-name">icon-maskable.svg</span><span class="file-purpose">Maskable</span><span class="file-size">vector</span></div>
+      <div class="file-row"><img src="icons/icon-monochrome.svg" alt=""><span class="file-name">icon-monochrome.svg</span><span class="file-purpose">Monochrome</span><span class="file-size">vector</span></div>
+      <div class="file-row"><img src="icons/favicon.ico" alt=""><span class="file-name">favicon.ico</span><span class="file-purpose">Multi-res</span><span class="file-size">16/24/32/48/64</span></div>
+      <div class="file-row"><img src="icons/apple-touch-icon.png" alt=""><span class="file-name">apple-touch-icon.png</span><span class="file-purpose">iOS</span><span class="file-size">180×180</span></div>
+      <div class="file-row"><img src="icons/icon-16.png" alt=""><span class="file-name">icon-16.png</span><span class="file-purpose">Any</span><span class="file-size">16×16</span></div>
+      <div class="file-row"><img src="icons/icon-32.png" alt=""><span class="file-name">icon-32.png</span><span class="file-purpose">Any</span><span class="file-size">32×32</span></div>
+      <div class="file-row"><img src="icons/icon-48.png" alt=""><span class="file-name">icon-48.png</span><span class="file-purpose">Any</span><span class="file-size">48×48</span></div>
+      <div class="file-row"><img src="icons/icon-72.png" alt=""><span class="file-name">icon-72.png</span><span class="file-purpose">Any</span><span class="file-size">72×72</span></div>
+      <div class="file-row"><img src="icons/icon-96.png" alt=""><span class="file-name">icon-96.png</span><span class="file-purpose">Any</span><span class="file-size">96×96</span></div>
+      <div class="file-row"><img src="icons/icon-128.png" alt=""><span class="file-name">icon-128.png</span><span class="file-purpose">Any</span><span class="file-size">128×128</span></div>
+      <div class="file-row"><img src="icons/icon-144.png" alt=""><span class="file-name">icon-144.png</span><span class="file-purpose">Windows</span><span class="file-size">144×144</span></div>
+      <div class="file-row"><img src="icons/icon-152.png" alt=""><span class="file-name">icon-152.png</span><span class="file-purpose">iPad</span><span class="file-size">152×152</span></div>
+      <div class="file-row"><img src="icons/icon-167.png" alt=""><span class="file-name">icon-167.png</span><span class="file-purpose">iPad Pro</span><span class="file-size">167×167</span></div>
+      <div class="file-row"><img src="icons/icon-180.png" alt=""><span class="file-name">icon-180.png</span><span class="file-purpose">iOS</span><span class="file-size">180×180</span></div>
+      <div class="file-row"><img src="icons/icon-192.png" alt=""><span class="file-name">icon-192.png</span><span class="file-purpose">Android</span><span class="file-size">192×192</span></div>
+      <div class="file-row"><img src="icons/icon-256.png" alt=""><span class="file-name">icon-256.png</span><span class="file-purpose">Any</span><span class="file-size">256×256</span></div>
+      <div class="file-row"><img src="icons/icon-384.png" alt=""><span class="file-name">icon-384.png</span><span class="file-purpose">Android</span><span class="file-size">384×384</span></div>
+      <div class="file-row"><img src="icons/icon-512.png" alt=""><span class="file-name">icon-512.png</span><span class="file-purpose">Splash</span><span class="file-size">512×512</span></div>
+      <div class="file-row"><img src="icons/icon-1024.png" alt=""><span class="file-name">icon-1024.png</span><span class="file-purpose">Store</span><span class="file-size">1024×1024</span></div>
+      <div class="file-row"><img src="icons/icon-maskable-192.png" alt=""><span class="file-name">icon-maskable-192.png</span><span class="file-purpose">Maskable</span><span class="file-size">192×192</span></div>
+      <div class="file-row"><img src="icons/icon-maskable-512.png" alt=""><span class="file-name">icon-maskable-512.png</span><span class="file-purpose">Maskable</span><span class="file-size">512×512</span></div>
+      <div class="file-row"><img src="icons/icon-monochrome-512.png" alt=""><span class="file-name">icon-monochrome-512.png</span><span class="file-purpose">Monochrome</span><span class="file-size">512×512</span></div>
+    </div>
+  </div>
+
+  <footer>
+    <div>Gamasoft IA Technologies</div>
+    <em>Aperture Ridge · Terrain Capture</em>
+    <div>23 archivos · Huatulco, Oaxaca · MMXXVI</div>
+  </footer>
+
+</div>
+</body>
+</html>
