@@ -1,5 +1,6 @@
 import { downloadProjectCsv } from "@/lib/geo/csv";
 import { downloadProjectGeoJson } from "@/lib/geo/geojson";
+import { downloadProjectZip } from "@/lib/geo/zip";
 import {
   downloadProjectKml,
   loadProjectForKmlExport,
@@ -7,7 +8,7 @@ import {
 } from "@/lib/geo/kml";
 
 /** Formatos espaciales descargables desde la vista de mapa (misma carga que KML). */
-export type ProjectMapExportFormat = "kml" | "geojson" | "csv";
+export type ProjectMapExportFormat = "kml" | "geojson" | "csv" | "zip";
 
 /** Carga proyecto + polígonos + POIs para export (alias semántico). */
 export async function loadProjectMapExportInput(
@@ -29,6 +30,9 @@ export async function runProjectMapExport(
       return;
     case "csv":
       await downloadProjectCsv(input);
+      return;
+    case "zip":
+      await downloadProjectZip(input);
       return;
   }
 }

@@ -10,12 +10,13 @@ import {
   type ProjectMapExportFormat,
 } from "@/lib/geo/projectMapExport";
 
-const FORMAT_ORDER: ProjectMapExportFormat[] = ["kml", "geojson", "csv"];
+const FORMAT_ORDER: ProjectMapExportFormat[] = ["kml", "geojson", "csv", "zip"];
 
 const LABELS: Record<ProjectMapExportFormat, string> = {
   kml: "KML",
   geojson: "GeoJSON",
   csv: "CSV",
+  zip: "ZIP (incluye fotos)",
 };
 
 export function ProjectMapExportMenu({
