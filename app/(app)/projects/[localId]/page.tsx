@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Trash2 } from "lucide-react";
+import { Navigation, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { CaptureButton } from "@/components/capture/CaptureButton";
 import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
+import { sortedVertices } from "@/components/map/mapCanvasShared";
 import { POIDetailSheet } from "@/components/project/POIDetailSheet";
 import { useMapOutlineOnly } from "@/components/providers/MapOutlineOnlyPreference";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
@@ -28,6 +29,7 @@ import {
 } from "@/components/project/SubPolygonWorkflow";
 import { VertexDetailSheet } from "@/components/project/VertexDetailSheet";
 import { FieldPermissionsIntro } from "@/components/onboarding/FieldPermissionsIntro";
+import { directionsUrlTo } from "@/lib/geo/directionsUrls";
 import { analyzeClosedPolygonIssues } from "@/lib/geo/polygonTopology";
 import { ProjectMapExportMenu } from "@/components/project/ProjectMapExportMenu";
 import { DeleteProjectDialog } from "@/components/project/DeleteProjectDialog";
@@ -222,6 +224,13 @@ export default function ProjectDetailPage() {
       return null;
     };
   }, [allowVertexMapDrag, data, selectedSubPolygonForUi]);
+
+  /** Primer vértice del polígono principal (P1) por `orderIndex`. */
+  const p1Vertex = useMemo(() => {
+    const verts = data?.vertices;
+    if (!verts?.length) return null;
+    return sortedVertices(verts)[0] ?? null;
+  }, [data?.vertices]);
 
   const handleClosePolygon = useCallback(async () => {
     if (!data?.main || data.vertices.length < 3) return;
@@ -450,6 +459,25 @@ export default function ProjectDetailPage() {
           resolveVertexDragTarget={resolveVertexDragTarget}
           outlineOnly={mapOutlineOnly}
         />
+        {p1Vertex ? (
+          <div className="pointer-events-none absolute bottom-0 left-0 z-[34] flex justify-start p-3">
+            <a
+              href={directionsUrlTo(p1Vertex.latitude, p1Vertex.longitude)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abrir ruta desde tu ubicación al vértice P1 del terreno principal"
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "bg-card/95 text-foreground pointer-events-auto inline-flex items-center gap-2 shadow-md backdrop-blur-sm",
+              )}
+            >
+              <Navigation className="size-4 shrink-0" aria-hidden />
+              <span className="max-w-[11rem] truncate sm:max-w-none">
+                Cómo llegar a P1
+              </span>
+            </a>
+          </div>
+        ) : null}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
             <h1 className="text-foreground truncate text-base font-semibold tracking-tight">
