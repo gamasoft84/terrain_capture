@@ -8,6 +8,7 @@ import { SyncConflictGate } from "@/components/sync/SyncConflictGate";
 import { SyncQueueProvider } from "@/components/sync/SyncQueueProvider";
 import { OnlineStatusBridge } from "@/lib/context/OnlineStatusBridge";
 import { MapEnginePreferenceProvider } from "@/components/providers/MapEnginePreference";
+import { MapOutlineOnlyProvider } from "@/components/providers/MapOutlineOnlyPreference";
 import { MapVertexDragProvider } from "@/components/providers/MapVertexDragPreference";
 
 export default function AppShellLayout({
@@ -18,24 +19,26 @@ export default function AppShellLayout({
   return (
     <MapEnginePreferenceProvider>
       <MapVertexDragProvider>
-        <OnlineStatusBridge>
-          <SyncQueueProvider>
-            <SyncConflictGate />
-            <LastProjectRouteTracker />
-            <WelcomeTour />
-            <div className="bg-background flex min-h-dvh flex-col">
-              <div className="bg-background sticky top-0 z-40 flex flex-col">
-                <OfflineBanner />
-                <TopBar />
-                <FieldBatteryHint />
+        <MapOutlineOnlyProvider>
+          <OnlineStatusBridge>
+            <SyncQueueProvider>
+              <SyncConflictGate />
+              <LastProjectRouteTracker />
+              <WelcomeTour />
+              <div className="bg-background flex min-h-dvh flex-col">
+                <div className="bg-background sticky top-0 z-40 flex flex-col">
+                  <OfflineBanner />
+                  <TopBar />
+                  <FieldBatteryHint />
+                </div>
+                <main className="flex flex-1 flex-col px-4 pb-28 pt-4">
+                  {children}
+                </main>
+                <BottomNav />
               </div>
-              <main className="flex flex-1 flex-col px-4 pb-28 pt-4">
-                {children}
-              </main>
-              <BottomNav />
-            </div>
-          </SyncQueueProvider>
-        </OnlineStatusBridge>
+            </SyncQueueProvider>
+          </OnlineStatusBridge>
+        </MapOutlineOnlyProvider>
       </MapVertexDragProvider>
     </MapEnginePreferenceProvider>
   );

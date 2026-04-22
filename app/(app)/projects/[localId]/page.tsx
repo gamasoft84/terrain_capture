@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CaptureButton } from "@/components/capture/CaptureButton";
 import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
 import { POIDetailSheet } from "@/components/project/POIDetailSheet";
+import { useMapOutlineOnly } from "@/components/providers/MapOutlineOnlyPreference";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
 import { ProjectBottomPanel } from "@/components/project/ProjectBottomPanel";
@@ -71,6 +72,7 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const localId = typeof params.localId === "string" ? params.localId : "";
   const { allowVertexMapDrag } = useMapVertexDrag();
+  const { mapOutlineOnly, setMapOutlineOnly } = useMapOutlineOnly();
   const highAccuracyGpsDesired = useHighAccuracyGpsDesired();
 
   /** Centro del mapa en proyecto vacío (solo vértices): ubicación actual del dispositivo. */
@@ -446,6 +448,7 @@ export default function ProjectDetailPage() {
           }
           allowVertexDrag={allowVertexMapDrag}
           resolveVertexDragTarget={resolveVertexDragTarget}
+          outlineOnly={mapOutlineOnly}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
@@ -459,6 +462,21 @@ export default function ProjectDetailPage() {
             ) : null}
           </div>
           <div className="pointer-events-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <label
+              htmlFor="project-map-outline"
+              className="bg-card/90 text-foreground flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs shadow-md backdrop-blur-sm"
+            >
+              <input
+                id="project-map-outline"
+                type="checkbox"
+                checked={mapOutlineOnly}
+                onChange={(e) => setMapOutlineOnly(e.target.checked)}
+                className="border-input text-primary focus-visible:ring-ring size-4 shrink-0 rounded border"
+              />
+              <span className="max-[10rem] truncate font-medium leading-none">
+                Solo contorno
+              </span>
+            </label>
             <ProjectMapExportMenu projectLocalId={localId} />
             <Link
               href={`/projects/${data.project.localId}/report`}

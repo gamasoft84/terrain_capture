@@ -90,6 +90,7 @@ function MapLibreTerrainMap({
   allowVertexDrag = false,
   resolveVertexDragTarget,
   minimalChrome = false,
+  outlineOnly = false,
   onCaptureReady,
 }: MapCanvasProps) {
   const mapRef = useRef<MapRef>(null);
@@ -156,8 +157,9 @@ function MapLibreTerrainMap({
       buildSubPolygonsFeatureCollection(
         subLayers,
         selectedSubPolygonLocalId ?? null,
+        outlineOnly,
       ),
-    [subLayers, selectedSubPolygonLocalId],
+    [subLayers, selectedSubPolygonLocalId, outlineOnly],
   );
 
   const vertexMarkers = useMemo(() => {
@@ -271,9 +273,12 @@ function MapLibreTerrainMap({
       return;
     }
 
-    const markerCount = vertexMarkers.length + pois.length;
-    if (markerCount !== vertexCountForFitRef.current) {
-      vertexCountForFitRef.current = markerCount;
+    const markersForFitBounds =
+      outlineOnly && !allowVertexDrag
+        ? pois.length
+        : vertexMarkers.length + pois.length;
+    if (markersForFitBounds !== vertexCountForFitRef.current) {
+      vertexCountForFitRef.current = markersForFitBounds;
       didFitForCurrentVertexSetRef.current = false;
     }
     if (!didFitForCurrentVertexSetRef.current) {
@@ -285,6 +290,7 @@ function MapLibreTerrainMap({
     hasGeometry,
     allBoundsPoints,
     allowVertexDrag,
+    outlineOnly,
     vertexMarkers.length,
     pois.length,
     vertices,
@@ -354,7 +360,8 @@ function MapLibreTerrainMap({
     [onMapClick, onSelectSubPolygonFromMap],
   );
 
-  const showEdgeLabels = zoom >= EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM;
+  const showEdgeLabels =
+    !outlineOnly && zoom >= EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM;
 
   const onMapLoad = useCallback(() => {
     setMapReady(true);
@@ -405,7 +412,7 @@ function MapLibreTerrainMap({
             filter={["==", ["get", "kind"], "fill"]}
             paint={{
               "fill-color": "#10b981",
-              "fill-opacity": 0.28,
+              "fill-opacity": outlineOnly ? 0.04 : 0.28,
             }}
           />
           <Layer
@@ -413,9 +420,9 @@ function MapLibreTerrainMap({
             type="line"
             filter={["==", ["get", "kind"], "line"]}
             paint={{
-              "line-color": "#34d399",
-              "line-opacity": 0.95,
-              "line-width": 3,
+              "line-color": outlineOnly ? "#6ee7b7" : "#34d399",
+              "line-opacity": 1,
+              "line-width": outlineOnly ? 1.5 : 3,
             }}
           />
         </Source>
@@ -442,60 +449,81 @@ function MapLibreTerrainMap({
           />
         </Source>
 
-        {vertexMarkers.map(({ vertex, label, variant, subColor }) => {
-          const dragCtx = resolveVertexDragTarget?.(vertex) ?? null;
-          const dragEnabled = Boolean(allowVertexDrag && dragCtx);
-          return (
-            <Marker
-              key={`${variant}-${vertex.localId}`}
-              longitude={vertex.longitude}
-              latitude={vertex.latitude}
-              draggable={dragEnabled}
-              anchor="center"
-              onDragEnd={(ev) => {
-                const ll = ev.lngLat;
-                if (!dragCtx) return;
-                void (async () => {
-                  try {
-                    await updateVertex(vertex.localId, {
-                      latitude: ll.lat,
-                      longitude: ll.lng,
-                      captureMethod: "manual_map",
-                    });
-                    await refreshPolygonMetricsFromVertices(
-                      dragCtx.polygonLocalId,
-                      dragCtx.polygonIsClosed,
-                    );
-                  } catch {
-                    /* ignore */
-                  }
-                })();
-              }}
-            >
-              <div
-                className={cn(
-                  "border-background flex size-8 items-center justify-center rounded-full border-2 text-xs font-bold shadow-md",
-                  variant === "main"
-                    ? "bg-primary text-primary-foreground"
-                    : "ring-2 ring-amber-500/80",
-                  dragEnabled &&
-                    "cursor-grab touch-none active:cursor-grabbing",
-                )}
-                style={
-                  variant === "sub"
-                    ? {
-                        backgroundColor: "rgba(250,250,250,0.95)",
-                        color: "#171717",
-                        borderColor: subColor ?? "#f97316",
-                      }
-                    : undefined
-                }
+        {(!outlineOnly || allowVertexDrag) &&
+          vertexMarkers.map(({ vertex, label, variant, subColor }) => {
+            const dragCtx = resolveVertexDragTarget?.(vertex) ?? null;
+            const dragEnabled = Boolean(allowVertexDrag && dragCtx);
+            const dragHandleOnly = Boolean(outlineOnly && dragEnabled);
+            return (
+              <Marker
+                key={`${variant}-${vertex.localId}`}
+                longitude={vertex.longitude}
+                latitude={vertex.latitude}
+                draggable={dragEnabled}
+                anchor="center"
+                onDragEnd={(ev) => {
+                  const ll = ev.lngLat;
+                  if (!dragCtx) return;
+                  void (async () => {
+                    try {
+                      await updateVertex(vertex.localId, {
+                        latitude: ll.lat,
+                        longitude: ll.lng,
+                        captureMethod: "manual_map",
+                      });
+                      await refreshPolygonMetricsFromVertices(
+                        dragCtx.polygonLocalId,
+                        dragCtx.polygonIsClosed,
+                      );
+                    } catch {
+                      /* ignore */
+                    }
+                  })();
+                }}
               >
-                {label}
-              </div>
-            </Marker>
-          );
-        })}
+                {dragHandleOnly ? (
+                  <div
+                    className={cn(
+                      "size-3 rounded-full border shadow-sm",
+                      variant === "main"
+                        ? "border-emerald-950 bg-primary/90"
+                        : "border-amber-700 bg-white/90",
+                      dragEnabled &&
+                        "cursor-grab touch-none active:cursor-grabbing",
+                    )}
+                    style={
+                      variant === "sub"
+                        ? { borderColor: subColor ?? "#f97316" }
+                        : undefined
+                    }
+                    aria-hidden
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      "border-background flex size-8 items-center justify-center rounded-full border-2 text-xs font-bold shadow-md",
+                      variant === "main"
+                        ? "bg-primary text-primary-foreground"
+                        : "ring-2 ring-amber-500/80",
+                      dragEnabled &&
+                        "cursor-grab touch-none active:cursor-grabbing",
+                    )}
+                    style={
+                      variant === "sub"
+                        ? {
+                            backgroundColor: "rgba(250,250,250,0.95)",
+                            color: "#171717",
+                            borderColor: subColor ?? "#f97316",
+                          }
+                        : undefined
+                    }
+                  >
+                    {label}
+                  </div>
+                )}
+              </Marker>
+            );
+          })}
 
         {pois.map((poi) => {
           const dragEnabled = Boolean(allowVertexDrag);
@@ -540,8 +568,8 @@ function MapLibreTerrainMap({
                 <div style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.35))" }}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="32"
-                    height="32"
+                    width={outlineOnly ? 22 : 32}
+                    height={outlineOnly ? 22 : 32}
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="#d97706"
@@ -558,15 +586,17 @@ function MapLibreTerrainMap({
                     />
                   </svg>
                 </div>
-                <div
-                  className="border-border max-w-[5.5rem] truncate rounded border px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
-                  style={{
-                    background: "rgba(255,255,255,0.92)",
-                    color: "#171717",
-                  }}
-                >
-                  {poi.label}
-                </div>
+                {!outlineOnly ? (
+                  <div
+                    className="border-border max-w-[5.5rem] truncate rounded border px-1.5 py-0.5 text-[10px] font-semibold leading-tight shadow-sm"
+                    style={{
+                      background: "rgba(255,255,255,0.92)",
+                      color: "#171717",
+                    }}
+                  >
+                    {poi.label}
+                  </div>
+                ) : null}
               </div>
             </Marker>
           );
@@ -620,7 +650,7 @@ function MapLibreTerrainMap({
             );
           })}
 
-        {areaCentroid ? (
+        {!outlineOnly && areaCentroid ? (
           <Marker
             longitude={areaCentroid.lng}
             latitude={areaCentroid.lat}

@@ -42,6 +42,12 @@ export interface MapCanvasProps {
     vertex: LocalVertex,
   ) => { polygonLocalId: string; polygonIsClosed: boolean } | null;
   minimalChrome?: boolean;
+  /**
+   * Prioriza ver el perímetro del terreno: trazo fino, relleno muy suave u oculto,
+   * sin etiquetas P1/S1 ni cotas en aristas (útil en parcelas pequeñas).
+   * Si `allowVertexDrag` está activo, se muestran puntos mínimos sin texto para arrastrar.
+   */
+  outlineOnly?: boolean;
   /** PNG para el PDF (motor WebGL: canvas; Google: captura del contenedor). */
   onCaptureReady?: (dataUrl: string) => void;
 }
@@ -83,6 +89,7 @@ export function buildFeatureCollection(
 export function buildSubPolygonsFeatureCollection(
   layers: SubPolygonMapLayer[],
   selectedId: string | null | undefined,
+  outlineOnly = false,
 ): FeatureCollection {
   const features: Feature[] = [];
   for (const { polygon, vertices } of layers) {
@@ -96,7 +103,13 @@ export function buildSubPolygonsFeatureCollection(
             kind: "fill",
             polygonId: polygon.localId,
             fillColor: polygon.color,
-            fillOpacity: sel ? 0.38 : 0.2,
+            fillOpacity: outlineOnly
+              ? sel
+                ? 0.1
+                : 0.04
+              : sel
+                ? 0.38
+                : 0.2,
           },
           geometry: f.geometry as Polygon,
         });
@@ -110,8 +123,8 @@ export function buildSubPolygonsFeatureCollection(
             kind: "line",
             polygonId: polygon.localId,
             lineColor: polygon.color,
-            lineWidth: sel ? 4 : 2,
-            lineOpacity: sel ? 1 : 0.75,
+            lineWidth: outlineOnly ? (sel ? 1.5 : 1) : sel ? 4 : 2,
+            lineOpacity: outlineOnly ? (sel ? 1 : 0.88) : sel ? 1 : 0.75,
           },
           geometry: f.geometry as LineString,
         });

@@ -123,6 +123,7 @@ function GoogleTerrainMap({
   allowVertexDrag = false,
   resolveVertexDragTarget,
   minimalChrome = false,
+  outlineOnly = false,
   onCaptureReady,
   apiKey,
 }: InnerProps) {
@@ -378,9 +379,12 @@ function GoogleTerrainMap({
       return;
     }
 
-    const markerCount = vertexMarkers.length + pois.length;
-    if (markerCount !== vertexCountForFitRef.current) {
-      vertexCountForFitRef.current = markerCount;
+    const markersForFitBounds =
+      outlineOnly && !allowVertexDrag
+        ? pois.length
+        : vertexMarkers.length + pois.length;
+    if (markersForFitBounds !== vertexCountForFitRef.current) {
+      vertexCountForFitRef.current = markersForFitBounds;
       didFitForCurrentVertexSetRef.current = false;
     }
     if (!didFitForCurrentVertexSetRef.current) {
@@ -392,6 +396,7 @@ function GoogleTerrainMap({
     hasGeometry,
     allBoundsPoints,
     allowVertexDrag,
+    outlineOnly,
     vertexMarkers.length,
     pois.length,
     vertices,
@@ -468,7 +473,8 @@ function GoogleTerrainMap({
     [onMapClick, onSelectSubPolygonFromMap],
   );
 
-  const showEdgeLabels = zoom >= EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM;
+  const showEdgeLabels =
+    !outlineOnly && zoom >= EDGE_DISTANCE_MAP_LABEL_MIN_ZOOM;
 
   if (loadError) {
     return (
@@ -526,19 +532,19 @@ function GoogleTerrainMap({
             path={mainPath}
             options={{
               fillColor: "#10b981",
-              fillOpacity: 0.28,
-              strokeColor: "#34d399",
-              strokeOpacity: 0.95,
-              strokeWeight: 3,
+              fillOpacity: outlineOnly ? 0.04 : 0.28,
+              strokeColor: outlineOnly ? "#6ee7b7" : "#34d399",
+              strokeOpacity: 1,
+              strokeWeight: outlineOnly ? 1.5 : 3,
             }}
           />
         ) : mainPath.length >= 2 ? (
           <Polyline
             path={mainPath}
             options={{
-              strokeColor: "#34d399",
-              strokeOpacity: 0.95,
-              strokeWeight: 3,
+              strokeColor: outlineOnly ? "#6ee7b7" : "#34d399",
+              strokeOpacity: 1,
+              strokeWeight: outlineOnly ? 1.5 : 3,
             }}
           />
         ) : null}
@@ -551,10 +557,16 @@ function GoogleTerrainMap({
                 path={path}
                 options={{
                   fillColor: polygon.color,
-                  fillOpacity: selected ? 0.38 : 0.2,
+                  fillOpacity: outlineOnly
+                    ? selected
+                      ? 0.1
+                      : 0.04
+                    : selected
+                      ? 0.38
+                      : 0.2,
                   strokeColor: polygon.color,
-                  strokeOpacity: selected ? 1 : 0.75,
-                  strokeWeight: selected ? 4 : 2,
+                  strokeOpacity: outlineOnly ? (selected ? 1 : 0.88) : selected ? 1 : 0.75,
+                  strokeWeight: outlineOnly ? (selected ? 1.5 : 1) : selected ? 4 : 2,
                 }}
               />
             );
@@ -566,8 +578,8 @@ function GoogleTerrainMap({
                 path={closed ? [...path, path[0]!] : path}
                 options={{
                   strokeColor: polygon.color,
-                  strokeOpacity: selected ? 1 : 0.75,
-                  strokeWeight: selected ? 4 : 2,
+                  strokeOpacity: outlineOnly ? (selected ? 1 : 0.88) : selected ? 1 : 0.75,
+                  strokeWeight: outlineOnly ? (selected ? 1.5 : 1) : selected ? 4 : 2,
                 }}
               />
             );
@@ -575,54 +587,68 @@ function GoogleTerrainMap({
           return null;
         })}
 
-        {vertexMarkers.map(({ vertex, label, variant, subColor }) => {
-          const dragCtx = resolveVertexDragTarget?.(vertex) ?? null;
-          const dragEnabled = Boolean(allowVertexDrag && dragCtx);
-          return (
-            <Marker
-              key={`${variant}-${vertex.localId}`}
-              position={{ lat: vertex.latitude, lng: vertex.longitude }}
-              draggable={dragEnabled}
-              options={{ optimized: false }}
-              label={{
-                text: label,
-                fontSize: "11px",
-                fontWeight: "bold",
-                className:
-                  variant === "main"
-                    ? "terrain-gmaps-vertex-label--main"
-                    : "terrain-gmaps-vertex-label--sub",
-              } as any}
-              onDragEnd={(e) => {
-                const ll = e.latLng;
-                if (!ll || !dragCtx) return;
-                void (async () => {
-                  try {
-                    await updateVertex(vertex.localId, {
-                      latitude: ll.lat(),
-                      longitude: ll.lng(),
-                      captureMethod: "manual_map",
-                    });
-                    await refreshPolygonMetricsFromVertices(
-                      dragCtx.polygonLocalId,
-                      dragCtx.polygonIsClosed,
-                    );
-                  } catch {
-                    /* ignore */
-                  }
-                })();
-              }}
-              icon={{
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: variant === "main" ? 10 : 9,
-                fillColor: variant === "main" ? "#10b981" : "#fafafa",
-                fillOpacity: 1,
-                strokeColor: variant === "main" ? "#052e16" : subColor ?? "#f97316",
-                strokeWeight: variant === "main" ? 2 : 3,
-              }}
-            />
-          );
-        })}
+        {(!outlineOnly || allowVertexDrag) &&
+          vertexMarkers.map(({ vertex, label, variant, subColor }) => {
+            const dragCtx = resolveVertexDragTarget?.(vertex) ?? null;
+            const dragEnabled = Boolean(allowVertexDrag && dragCtx);
+            const dragHandleOnly = Boolean(outlineOnly && dragEnabled);
+            return (
+              <Marker
+                key={`${variant}-${vertex.localId}`}
+                position={{ lat: vertex.latitude, lng: vertex.longitude }}
+                draggable={dragEnabled}
+                options={
+                  {
+                    optimized: false,
+                    ...(dragHandleOnly
+                      ? {}
+                      : {
+                          label: {
+                            text: label,
+                            fontSize: "11px",
+                            fontWeight: "bold",
+                            className:
+                              variant === "main"
+                                ? "terrain-gmaps-vertex-label--main"
+                                : "terrain-gmaps-vertex-label--sub",
+                          } as google.maps.MarkerLabel,
+                        }),
+                  } as google.maps.MarkerOptions
+                }
+                onDragEnd={(e) => {
+                  const ll = e.latLng;
+                  if (!ll || !dragCtx) return;
+                  void (async () => {
+                    try {
+                      await updateVertex(vertex.localId, {
+                        latitude: ll.lat(),
+                        longitude: ll.lng(),
+                        captureMethod: "manual_map",
+                      });
+                      await refreshPolygonMetricsFromVertices(
+                        dragCtx.polygonLocalId,
+                        dragCtx.polygonIsClosed,
+                      );
+                    } catch {
+                      /* ignore */
+                    }
+                  })();
+                }}
+                icon={{
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: dragHandleOnly
+                    ? 5
+                    : variant === "main"
+                      ? 10
+                      : 9,
+                  fillColor: variant === "main" ? "#10b981" : "#fafafa",
+                  fillOpacity: dragHandleOnly ? 0.88 : 1,
+                  strokeColor: variant === "main" ? "#052e16" : subColor ?? "#f97316",
+                  strokeWeight: dragHandleOnly ? 1.5 : variant === "main" ? 2 : 3,
+                }}
+              />
+            );
+          })}
 
         {pois.map((poi) => {
           const dragEnabled = Boolean(allowVertexDrag);
@@ -631,7 +657,21 @@ function GoogleTerrainMap({
               key={poi.localId}
               position={{ lat: poi.latitude, lng: poi.longitude }}
               draggable={dragEnabled}
-              options={{ optimized: false }}
+              options={
+                {
+                  optimized: false,
+                  ...(outlineOnly
+                    ? {}
+                    : {
+                        label: {
+                          text: poi.label,
+                          fontSize: "10px",
+                          fontWeight: "600",
+                          className: "terrain-gmaps-poi-label",
+                        } as google.maps.MarkerLabel,
+                      }),
+                } as google.maps.MarkerOptions
+              }
               onClick={() => {
                 if (poiSkipNextOpenRef.current) {
                   poiSkipNextOpenRef.current = false;
@@ -654,19 +694,13 @@ function GoogleTerrainMap({
                   }
                 })();
               }}
-              label={{
-                text: poi.label,
-                fontSize: "10px",
-                fontWeight: "600",
-                className: "terrain-gmaps-poi-label",
-              } as any}
               icon={{
                 path: google.maps.SymbolPath.CIRCLE,
-                scale: 10,
+                scale: outlineOnly ? 6 : 10,
                 fillColor: "#fffbeb",
-                fillOpacity: 1,
+                fillOpacity: outlineOnly ? 0.92 : 1,
                 strokeColor: "#d97706",
-                strokeWeight: 2,
+                strokeWeight: outlineOnly ? 1.5 : 2,
               }}
             />
           );
@@ -724,7 +758,7 @@ function GoogleTerrainMap({
             );
           })}
 
-        {areaCentroid && areaM2 != null ? (
+        {!outlineOnly && areaCentroid && areaM2 != null ? (
           <Marker
             position={{ lat: areaCentroid.lat, lng: areaCentroid.lng }}
             options={{ optimized: false }}
