@@ -8,6 +8,7 @@ import { SyncConflictGate } from "@/components/sync/SyncConflictGate";
 import { SyncQueueProvider } from "@/components/sync/SyncQueueProvider";
 import { OnlineStatusBridge } from "@/lib/context/OnlineStatusBridge";
 import { MapEnginePreferenceProvider } from "@/components/providers/MapEnginePreference";
+import { FieldModePreferenceProvider } from "@/components/providers/FieldModePreference";
 import { MapFitBoundsMaxZoomProvider } from "@/components/providers/MapFitBoundsMaxZoomPreference";
 import { MapOutlineOnlyProvider } from "@/components/providers/MapOutlineOnlyPreference";
 import { MapVertexDragProvider } from "@/components/providers/MapVertexDragPreference";
@@ -20,28 +21,30 @@ export default function AppShellLayout({
   return (
     <MapEnginePreferenceProvider>
       <MapVertexDragProvider>
-        <MapOutlineOnlyProvider>
-          <MapFitBoundsMaxZoomProvider>
-            <OnlineStatusBridge>
-              <SyncQueueProvider>
-                <SyncConflictGate />
-                <LastProjectRouteTracker />
-                <WelcomeTour />
-                <div className="bg-background flex min-h-dvh flex-col">
-                  <div className="bg-background sticky top-0 z-40 flex flex-col">
-                    <OfflineBanner />
-                    <TopBar />
-                    <FieldBatteryHint />
+        <FieldModePreferenceProvider>
+          <MapOutlineOnlyProvider>
+            <MapFitBoundsMaxZoomProvider>
+              <OnlineStatusBridge>
+                <SyncQueueProvider>
+                  <SyncConflictGate />
+                  <LastProjectRouteTracker />
+                  <WelcomeTour />
+                  <div className="bg-background flex min-h-dvh flex-col">
+                    <div className="bg-background sticky top-0 z-40 flex flex-col">
+                      <OfflineBanner />
+                      <TopBar />
+                      <FieldBatteryHint />
+                    </div>
+                    <main className="flex flex-1 flex-col px-4 pb-28 pt-4">
+                      {children}
+                    </main>
+                    <BottomNav />
                   </div>
-                  <main className="flex flex-1 flex-col px-4 pb-28 pt-4">
-                    {children}
-                  </main>
-                  <BottomNav />
-                </div>
-              </SyncQueueProvider>
-            </OnlineStatusBridge>
-          </MapFitBoundsMaxZoomProvider>
-        </MapOutlineOnlyProvider>
+                </SyncQueueProvider>
+              </OnlineStatusBridge>
+            </MapFitBoundsMaxZoomProvider>
+          </MapOutlineOnlyProvider>
+        </FieldModePreferenceProvider>
       </MapVertexDragProvider>
     </MapEnginePreferenceProvider>
   );

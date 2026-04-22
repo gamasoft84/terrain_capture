@@ -20,7 +20,7 @@ export async function listVerticesByPolygon(
 export async function createVertex(
   input: Omit<
     LocalVertex,
-    "localId" | "capturedAt" | "syncStatus" | "orderIndex"
+    "localId" | "capturedAt" | "updatedAt" | "syncStatus" | "orderIndex"
   > & {
     orderIndex: number;
     localId?: string;
@@ -60,6 +60,7 @@ export async function createVertex(
     ...rest,
     localId,
     capturedAt: new Date(),
+    updatedAt: new Date(),
     syncStatus: "pending",
   };
 
@@ -168,6 +169,7 @@ export async function updateVertex(
           photoBytes,
           photoMime,
           syncStatus: "pending",
+          updatedAt: new Date(),
         });
         delete v.photoBlob;
         if (thumbnailBytes != null && thumbnailBytes.byteLength > 0) {
@@ -195,6 +197,7 @@ export async function updateVertex(
     await db.vertices.update(localId, {
       ...patch,
       syncStatus: "pending",
+      updatedAt: new Date(),
     });
   } catch (err) {
     await logDexieBlobFailure("vertices.update", err, {

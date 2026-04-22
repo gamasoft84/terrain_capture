@@ -17,7 +17,7 @@ export async function listPoisByProject(
 }
 
 export async function createPOI(
-  input: Omit<LocalPOI, "localId" | "capturedAt" | "syncStatus"> & {
+  input: Omit<LocalPOI, "localId" | "capturedAt" | "updatedAt" | "syncStatus"> & {
     localId?: string;
     photoBlob?: Blob;
   },
@@ -59,6 +59,7 @@ export async function createPOI(
     ...rest,
     localId,
     capturedAt: new Date(),
+    updatedAt: new Date(),
     syncStatus: "pending",
   };
 
@@ -147,6 +148,7 @@ export async function updatePOI(
           photoBytes,
           photoMime,
           syncStatus: "pending",
+          updatedAt: new Date(),
         });
         delete row.photoBlob;
         if (thumbnailBytes != null && thumbnailBytes.byteLength > 0) {
@@ -174,6 +176,7 @@ export async function updatePOI(
     await db.pois.update(localId, {
       ...patch,
       syncStatus: "pending",
+      updatedAt: new Date(),
     });
   } catch (err) {
     await logDexieBlobFailure("pois.update", err, {

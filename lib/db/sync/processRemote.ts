@@ -223,6 +223,7 @@ export async function remoteInsertVertex(
       gps_accuracy_m: vertex.gpsAccuracyM ?? null,
       altitude_m: vertex.altitudeM ?? null,
       captured_at: iso(vertex.capturedAt),
+      updated_at: iso(vertex.updatedAt),
       photo_url: photoUrl,
       thumbnail_url: null,
       note: vertex.note ?? null,
@@ -261,6 +262,7 @@ export async function remoteUpdateVertex(
       gps_accuracy_m: vertex.gpsAccuracyM ?? null,
       altitude_m: vertex.altitudeM ?? null,
       captured_at: iso(vertex.capturedAt),
+      updated_at: iso(vertex.updatedAt),
       photo_url: photoUrl,
       note: vertex.note ?? null,
       capture_method: vertex.captureMethod,
@@ -337,6 +339,7 @@ export async function remoteInsertPoi(
       thumbnail_url: null,
       note: poi.note ?? null,
       captured_at: iso(poi.capturedAt),
+      updated_at: iso(poi.updatedAt),
     })
     .select("id")
     .single();
@@ -373,6 +376,7 @@ export async function remoteUpdatePoi(
       photo_url: photoUrl,
       note: poi.note ?? null,
       captured_at: iso(poi.capturedAt),
+      updated_at: iso(poi.updatedAt),
     })
     .eq("id", serverId)
     .select("id");
@@ -441,6 +445,7 @@ export async function remoteInsertProjectPhoto(
       latitude: photo.latitude ?? null,
       longitude: photo.longitude ?? null,
       captured_at: iso(photo.capturedAt),
+      updated_at: iso(photo.updatedAt),
     })
     .select("id")
     .single();
@@ -470,6 +475,7 @@ export async function remoteUpdateProjectPhoto(
       latitude: photo.latitude ?? null,
       longitude: photo.longitude ?? null,
       captured_at: iso(photo.capturedAt),
+      updated_at: iso(photo.updatedAt),
     })
     .eq("id", serverId)
     .select("id");

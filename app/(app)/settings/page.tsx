@@ -10,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { OfflineMapDownloader } from "@/components/map/OfflineMapDownloader";
 import { SyncSettingsActions } from "@/components/settings/SyncSettingsActions";
+import { useFieldMode } from "@/components/providers/FieldModePreference";
 import { useMapFitBoundsMaxZoom } from "@/components/providers/MapFitBoundsMaxZoomPreference";
 import { useMapEngine } from "@/components/providers/MapEnginePreference";
 import { useMapOutlineOnly } from "@/components/providers/MapOutlineOnlyPreference";
@@ -45,6 +46,7 @@ const MAP_ENGINE_OPTIONS: { id: MapEngineId; title: string; detail: string }[] =
   ];
 
 export default function SettingsPage() {
+  const { fieldModeEnabled, setFieldModeEnabled } = useFieldMode();
   const { mapEngine, setMapEngine } = useMapEngine();
   const { allowVertexMapDrag, setAllowVertexMapDrag } = useMapVertexDrag();
   const { mapOutlineOnly, setMapOutlineOnly } = useMapOutlineOnly();
@@ -173,6 +175,30 @@ export default function SettingsPage() {
                 {batterySaverEnabled
                   ? "Activado: GPS optimizado para autonomía."
                   : "Desactivado: máxima precisión GPS cuando la app la solicita."}
+              </span>
+            </div>
+          </div>
+
+          <div className="border-border space-y-3 rounded-lg border p-4">
+            <div className="space-y-1">
+              <Label htmlFor="field-mode" className="text-base font-medium">
+                Modo campo
+              </Label>
+              <p className="text-muted-foreground text-sm leading-snug">
+                Interfaz más limpia para levantar en sitio: prioriza contorno y
+                reduce elementos encima del satélite.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                id="field-mode"
+                type="checkbox"
+                checked={fieldModeEnabled}
+                onChange={(e) => setFieldModeEnabled(e.target.checked)}
+                className="border-input text-primary focus-visible:ring-ring size-5 shrink-0 rounded border shadow focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              />
+              <span className="text-sm">
+                {fieldModeEnabled ? "Activado" : "Desactivado"}
               </span>
             </div>
           </div>

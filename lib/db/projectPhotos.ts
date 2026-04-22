@@ -16,7 +16,7 @@ export async function listProjectPhotos(
 export async function createProjectPhoto(
   input: Omit<
     LocalProjectPhoto,
-    "localId" | "capturedAt" | "syncStatus"
+    "localId" | "capturedAt" | "updatedAt" | "syncStatus"
   > & { localId?: string },
 ): Promise<string> {
   const db = getDb();
@@ -41,6 +41,7 @@ export async function createProjectPhoto(
     ...rest,
     localId,
     capturedAt: new Date(),
+    updatedAt: new Date(),
     syncStatus: "pending",
   };
 

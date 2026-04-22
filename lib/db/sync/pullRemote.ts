@@ -45,6 +45,7 @@ type RemoteVertex = {
   gps_accuracy_m: number | string | null;
   altitude_m: number | string | null;
   captured_at: string;
+  updated_at: string;
   photo_url: string | null;
   thumbnail_url: string | null;
   note: string | null;
@@ -63,6 +64,7 @@ type RemotePoi = {
   thumbnail_url: string | null;
   note: string | null;
   captured_at: string;
+  updated_at: string;
 };
 
 type RemoteProjectPhoto = {
@@ -75,6 +77,7 @@ type RemoteProjectPhoto = {
   latitude: number | string | null;
   longitude: number | string | null;
   captured_at: string;
+  updated_at: string;
 };
 
 function toDate(value: string | null | undefined): Date {
@@ -185,6 +188,7 @@ function mapRemoteVertex(r: RemoteVertex, polygonLocalId: string): LocalVertex {
     gpsAccuracyM: toNum(r.gps_accuracy_m),
     altitudeM: toNum(r.altitude_m),
     capturedAt: toDate(r.captured_at),
+    updatedAt: toDate(r.updated_at),
     photoUrl: r.photo_url ?? undefined,
     note: r.note ?? undefined,
     captureMethod: r.capture_method,
@@ -207,6 +211,7 @@ function mapRemotePoi(r: RemotePoi, projectLocalId: string): LocalPOI {
     photoUrl: r.photo_url ?? undefined,
     note: r.note ?? undefined,
     capturedAt: toDate(r.captured_at),
+    updatedAt: toDate(r.updated_at),
     syncStatus: "synced",
     syncConflict: undefined,
     syncErrorReason: undefined,
@@ -222,6 +227,7 @@ function mapRemoteProjectPhoto(
     localId: r.local_id,
     serverId: r.id,
     projectLocalId,
+    updatedAt: toDate(r.updated_at),
     photoUrl: r.photo_url,
     thumbnailUrl: r.thumbnail_url ?? undefined,
     caption: r.caption ?? undefined,
@@ -243,7 +249,7 @@ async function fetchVerticesForPolygons(
   const { data, error } = await client
     .from("vertices")
     .select(
-      "id, local_id, polygon_id, order_index, latitude, longitude, gps_accuracy_m, altitude_m, captured_at, photo_url, thumbnail_url, note, capture_method",
+      "id, local_id, polygon_id, order_index, latitude, longitude, gps_accuracy_m, altitude_m, captured_at, updated_at, photo_url, thumbnail_url, note, capture_method",
     )
     .in("polygon_id", polygonServerIds);
   if (error) throw error;
@@ -269,7 +275,7 @@ async function applyFullProjectFromRemote(
   const { data: poiRows, error: poiErr } = await client
     .from("points_of_interest")
     .select(
-      "id, local_id, project_id, label, latitude, longitude, gps_accuracy_m, photo_url, thumbnail_url, note, captured_at",
+      "id, local_id, project_id, label, latitude, longitude, gps_accuracy_m, photo_url, thumbnail_url, note, captured_at, updated_at",
     )
     .eq("project_id", rp.id);
   if (poiErr) throw poiErr;
@@ -278,7 +284,7 @@ async function applyFullProjectFromRemote(
   const { data: photoRows, error: photoErr } = await client
     .from("project_photos")
     .select(
-      "id, local_id, project_id, photo_url, thumbnail_url, caption, latitude, longitude, captured_at",
+      "id, local_id, project_id, photo_url, thumbnail_url, caption, latitude, longitude, captured_at, updated_at",
     )
     .eq("project_id", rp.id);
   if (photoErr) throw photoErr;
@@ -333,7 +339,7 @@ async function mergeNewPoisAndPhotos(
   const { data: poiRows, error: poiErr } = await client
     .from("points_of_interest")
     .select(
-      "id, local_id, project_id, label, latitude, longitude, gps_accuracy_m, photo_url, thumbnail_url, note, captured_at",
+      "id, local_id, project_id, label, latitude, longitude, gps_accuracy_m, photo_url, thumbnail_url, note, captured_at, updated_at",
     )
     .eq("project_id", rp.id);
   if (poiErr) throw poiErr;
@@ -341,7 +347,7 @@ async function mergeNewPoisAndPhotos(
   const { data: photoRows, error: photoErr } = await client
     .from("project_photos")
     .select(
-      "id, local_id, project_id, photo_url, thumbnail_url, caption, latitude, longitude, captured_at",
+      "id, local_id, project_id, photo_url, thumbnail_url, caption, latitude, longitude, captured_at, updated_at",
     )
     .eq("project_id", rp.id);
   if (photoErr) throw photoErr;
@@ -349,13 +355,15 @@ async function mergeNewPoisAndPhotos(
   await db.transaction("rw", db.pois, db.projectPhotos, async () => {
     for (const row of (poiRows ?? []) as RemotePoi[]) {
       const existing = await db.pois.get(row.local_id);
-      if (!existing) {
+      if (!existing) await db.pois.put(mapRemotePoi(row, projectLocalId));
+      else if (toDate(row.updated_at).getTime() > existing.updatedAt.getTime()) {
         await db.pois.put(mapRemotePoi(row, projectLocalId));
       }
     }
     for (const row of (photoRows ?? []) as RemoteProjectPhoto[]) {
       const existing = await db.projectPhotos.get(row.local_id);
-      if (!existing) {
+      if (!existing) await db.projectPhotos.put(mapRemoteProjectPhoto(row, projectLocalId));
+      else if (toDate(row.updated_at).getTime() > existing.updatedAt.getTime()) {
         await db.projectPhotos.put(mapRemoteProjectPhoto(row, projectLocalId));
       }
     }

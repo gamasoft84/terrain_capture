@@ -42,6 +42,8 @@ export interface LocalVertex {
   gpsAccuracyM?: number;
   altitudeM?: number;
   capturedAt: Date;
+  /** Última modificación local (para sync LWW con Supabase). */
+  updatedAt: Date;
   /** Legado: algunas filas solo tienen esto. Preferir `photoBytes` + `photoMime` en WebKit. */
   photoBlob?: Blob;
   /** Foto en crudo (IndexedDB suele llevarlo mejor que `Blob` en Safari). */
@@ -74,6 +76,8 @@ export interface LocalPOI {
   latitude: number;
   longitude: number;
   gpsAccuracyM?: number;
+  /** Última modificación local (para sync LWW con Supabase). */
+  updatedAt: Date;
   /** Legado: preferir `photoBytes` + `photoMime` en WebKit. */
   photoBlob?: Blob;
   photoBytes?: ArrayBuffer;
@@ -93,6 +97,8 @@ export interface LocalProjectPhoto {
   localId: string;
   serverId?: string;
   projectLocalId: string;
+  /** Última modificación local (para sync LWW con Supabase). */
+  updatedAt: Date;
   photoBlob?: Blob;
   photoBytes?: ArrayBuffer;
   photoMime?: string;
@@ -200,10 +206,11 @@ export class TerrainCaptureDB extends Dexie {
         projects:
           "localId, serverId, status, syncStatus, createdAt, updatedAt",
         polygons: "localId, serverId, projectLocalId, type, syncStatus",
-        vertices: "localId, serverId, polygonLocalId, orderIndex, syncStatus",
-        pois: "localId, serverId, projectLocalId, syncStatus",
+        vertices:
+          "localId, serverId, polygonLocalId, orderIndex, syncStatus, updatedAt",
+        pois: "localId, serverId, projectLocalId, syncStatus, updatedAt",
         projectPhotos:
-          "localId, serverId, projectLocalId, syncStatus, capturedAt",
+          "localId, serverId, projectLocalId, syncStatus, capturedAt, updatedAt",
         syncQueue: "++id, entityType, entityLocalId, status, createdAt",
         tileCache: "url, zoom, cachedAt",
       })
@@ -216,10 +223,11 @@ export class TerrainCaptureDB extends Dexie {
       projects:
         "localId, serverId, status, syncStatus, createdAt, updatedAt",
       polygons: "localId, serverId, projectLocalId, type, syncStatus",
-      vertices: "localId, serverId, polygonLocalId, orderIndex, syncStatus",
-      pois: "localId, serverId, projectLocalId, syncStatus",
+      vertices:
+        "localId, serverId, polygonLocalId, orderIndex, syncStatus, updatedAt",
+      pois: "localId, serverId, projectLocalId, syncStatus, updatedAt",
       projectPhotos:
-        "localId, serverId, projectLocalId, syncStatus, capturedAt",
+        "localId, serverId, projectLocalId, syncStatus, capturedAt, updatedAt",
       syncQueue: "++id, entityType, entityLocalId, status, createdAt",
       tileCache: "url, zoom, cachedAt",
     });

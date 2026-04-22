@@ -19,6 +19,7 @@ import { CaptureButton } from "@/components/capture/CaptureButton";
 import MapCanvas, { type SubPolygonMapLayer } from "@/components/map/MapCanvas";
 import { sortedVertices } from "@/components/map/mapCanvasShared";
 import { POIDetailSheet } from "@/components/project/POIDetailSheet";
+import { useFieldMode } from "@/components/providers/FieldModePreference";
 import { useMapOutlineOnly } from "@/components/providers/MapOutlineOnlyPreference";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { useHighAccuracyGpsDesired } from "@/lib/hooks/useBatterySaver";
@@ -75,6 +76,8 @@ export default function ProjectDetailPage() {
   const localId = typeof params.localId === "string" ? params.localId : "";
   const { allowVertexMapDrag } = useMapVertexDrag();
   const { mapOutlineOnly, setMapOutlineOnly } = useMapOutlineOnly();
+  const { fieldModeEnabled } = useFieldMode();
+  const effectiveOutlineOnly = mapOutlineOnly || fieldModeEnabled;
   const highAccuracyGpsDesired = useHighAccuracyGpsDesired();
 
   /** Centro del mapa en proyecto vacío (solo vértices): ubicación actual del dispositivo. */
@@ -457,7 +460,7 @@ export default function ProjectDetailPage() {
           }
           allowVertexDrag={allowVertexMapDrag}
           resolveVertexDragTarget={resolveVertexDragTarget}
-          outlineOnly={mapOutlineOnly}
+          outlineOnly={effectiveOutlineOnly}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
@@ -478,7 +481,7 @@ export default function ProjectDetailPage() {
               <input
                 id="project-map-outline"
                 type="checkbox"
-                checked={mapOutlineOnly}
+                checked={effectiveOutlineOnly}
                 onChange={(e) => setMapOutlineOnly(e.target.checked)}
                 className="border-input text-primary focus-visible:ring-ring size-4 shrink-0 rounded border"
               />
