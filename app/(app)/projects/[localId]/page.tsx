@@ -532,6 +532,7 @@ export default function ProjectDetailPage() {
       <ProjectBottomPanel
         vertices={data.vertices}
         main={data.main}
+        startCollapsed={data.main.isClosed}
         subLayers={data.subLayers}
         pois={data.pois}
         projectPhotos={data.projectPhotos}

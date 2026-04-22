@@ -70,6 +70,11 @@ export interface ProjectBottomPanelProps {
   onClosePolygon: () => void;
   onVertexClick: (vertex: LocalVertex, displayIndex: number) => void;
   closePolygonBusy?: boolean;
+  /**
+   * Si el terreno principal ya está cerrado, el panel arranca colapsado para
+   * dejar más mapa (el usuario puede expandir con «Mostrar panel»).
+   */
+  startCollapsed?: boolean;
   /** Bloque opcional encima de métricas (p. ej. gestión de sub-áreas). */
   subPolygonManager?: ReactNode;
 }
@@ -84,9 +89,14 @@ export function ProjectBottomPanel({
   onClosePolygon,
   onVertexClick,
   closePolygonBusy,
+  startCollapsed = false,
   subPolygonManager,
 }: ProjectBottomPanelProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(!startCollapsed);
+
+  useEffect(() => {
+    setExpanded(!startCollapsed);
+  }, [startCollapsed]);
 
   const statsSummary = useMemo(() => {
     if (!main) return null;
