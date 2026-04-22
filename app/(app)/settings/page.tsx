@@ -10,11 +10,17 @@ import {
 import { Label } from "@/components/ui/label";
 import { OfflineMapDownloader } from "@/components/map/OfflineMapDownloader";
 import { SyncSettingsActions } from "@/components/settings/SyncSettingsActions";
+import { useMapFitBoundsMaxZoom } from "@/components/providers/MapFitBoundsMaxZoomPreference";
 import { useMapEngine } from "@/components/providers/MapEnginePreference";
 import { useMapOutlineOnly } from "@/components/providers/MapOutlineOnlyPreference";
 import { useMapVertexDrag } from "@/components/providers/MapVertexDragPreference";
 import { useBatterySaverControls } from "@/lib/hooks/useBatterySaver";
 import type { MapEngineId } from "@/lib/settings/mapEngine";
+import {
+  MAP_FIT_BOUNDS_MAX_ZOOM_DEFAULT,
+  MAP_FIT_BOUNDS_MAX_ZOOM_MAX,
+  MAP_FIT_BOUNDS_MAX_ZOOM_MIN,
+} from "@/lib/settings/mapFitBoundsMaxZoom";
 
 const MAP_ENGINE_OPTIONS: { id: MapEngineId; title: string; detail: string }[] =
   [
@@ -42,6 +48,8 @@ export default function SettingsPage() {
   const { mapEngine, setMapEngine } = useMapEngine();
   const { allowVertexMapDrag, setAllowVertexMapDrag } = useMapVertexDrag();
   const { mapOutlineOnly, setMapOutlineOnly } = useMapOutlineOnly();
+  const { mapFitBoundsMaxZoom, setMapFitBoundsMaxZoom } =
+    useMapFitBoundsMaxZoom();
   const { batterySaverEnabled, setBatterySaverEnabled } =
     useBatterySaverControls();
 
@@ -99,6 +107,42 @@ export default function SettingsPage() {
                   </span>
                 </label>
               ))}
+            </div>
+          </div>
+
+          <div className="border-border space-y-3 rounded-lg border p-4">
+            <div className="space-y-1">
+              <Label
+                htmlFor="map-fit-bounds-max-zoom"
+                className="text-base font-medium"
+              >
+                Zoom máximo al ver un proyecto
+              </Label>
+              <p className="text-muted-foreground text-sm leading-snug">
+                Tras abrir un proyecto el mapa encuadra el terreno; este tope
+                evita acercar tanto que el satélite quede sin teselas (gris).
+                Valores entre {MAP_FIT_BOUNDS_MAX_ZOOM_MIN} y{" "}
+                {MAP_FIT_BOUNDS_MAX_ZOOM_MAX}; recomendado cerca de{" "}
+                {MAP_FIT_BOUNDS_MAX_ZOOM_DEFAULT} en campo con ESRI o zonas con
+                cobertura floja.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <input
+                id="map-fit-bounds-max-zoom"
+                type="range"
+                min={MAP_FIT_BOUNDS_MAX_ZOOM_MIN}
+                max={MAP_FIT_BOUNDS_MAX_ZOOM_MAX}
+                step={1}
+                value={mapFitBoundsMaxZoom}
+                onChange={(e) =>
+                  setMapFitBoundsMaxZoom(Number.parseInt(e.target.value, 10))
+                }
+                className="accent-primary w-full min-w-0 flex-1 sm:max-w-xs"
+              />
+              <span className="text-foreground font-mono text-sm tabular-nums sm:w-10">
+                {mapFitBoundsMaxZoom}
+              </span>
             </div>
           </div>
 

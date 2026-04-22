@@ -40,6 +40,7 @@ import {
   containerStyle,
   DEFAULT_CENTER,
   DEFAULT_ZOOM,
+  MAP_FIT_BOUNDS_MAX_ZOOM,
   pickSubPolygonAtPoint,
   sortedVertices,
   type MapCanvasProps,
@@ -91,6 +92,7 @@ function MapLibreTerrainMap({
   resolveVertexDragTarget,
   minimalChrome = false,
   outlineOnly = false,
+  fitBoundsMaxZoom = MAP_FIT_BOUNDS_MAX_ZOOM,
   onCaptureReady,
 }: MapCanvasProps) {
   const mapRef = useRef<MapRef>(null);
@@ -269,7 +271,11 @@ function MapLibreTerrainMap({
     const duration = minimalChrome ? 0 : 500;
 
     if (!allowVertexDrag) {
-      map.fitBounds(bounds, { padding: pad, maxZoom: 18, duration });
+      map.fitBounds(bounds, {
+        padding: pad,
+        maxZoom: fitBoundsMaxZoom,
+        duration,
+      });
       return;
     }
 
@@ -282,7 +288,11 @@ function MapLibreTerrainMap({
       didFitForCurrentVertexSetRef.current = false;
     }
     if (!didFitForCurrentVertexSetRef.current) {
-      map.fitBounds(bounds, { padding: pad, maxZoom: 18, duration });
+      map.fitBounds(bounds, {
+        padding: pad,
+        maxZoom: fitBoundsMaxZoom,
+        duration,
+      });
       didFitForCurrentVertexSetRef.current = true;
     }
   }, [
@@ -297,6 +307,7 @@ function MapLibreTerrainMap({
     initialCenter,
     initialZoom,
     minimalChrome,
+    fitBoundsMaxZoom,
   ]);
 
   useEffect(() => {

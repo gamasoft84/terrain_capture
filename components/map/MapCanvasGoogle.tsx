@@ -32,6 +32,7 @@ import {
   containerStyle,
   DEFAULT_CENTER,
   DEFAULT_ZOOM,
+  MAP_FIT_BOUNDS_MAX_ZOOM,
   pickSubPolygonAtPoint,
   sortedVertices,
   type MapCanvasProps,
@@ -65,7 +66,7 @@ function fitBoundsWithCap(
   map: google.maps.Map,
   bounds: google.maps.LatLngBounds,
   padding: google.maps.Padding,
-  maxZoom = 18,
+  maxZoom: number,
   onAfterIdle?: (map: google.maps.Map) => void,
 ): void {
   map.fitBounds(withMinimumSpanBounds(bounds), padding);
@@ -124,6 +125,7 @@ function GoogleTerrainMap({
   resolveVertexDragTarget,
   minimalChrome = false,
   outlineOnly = false,
+  fitBoundsMaxZoom = MAP_FIT_BOUNDS_MAX_ZOOM,
   onCaptureReady,
   apiKey,
 }: InnerProps) {
@@ -375,7 +377,13 @@ function GoogleTerrainMap({
     const padding = { top: pad, right: pad, bottom: pad, left: pad };
 
     if (!allowVertexDrag) {
-      fitBoundsWithCap(map, bounds, padding, 18, syncMapViewFromMap);
+      fitBoundsWithCap(
+        map,
+        bounds,
+        padding,
+        fitBoundsMaxZoom,
+        syncMapViewFromMap,
+      );
       return;
     }
 
@@ -388,7 +396,13 @@ function GoogleTerrainMap({
       didFitForCurrentVertexSetRef.current = false;
     }
     if (!didFitForCurrentVertexSetRef.current) {
-      fitBoundsWithCap(map, bounds, padding, 18, syncMapViewFromMap);
+      fitBoundsWithCap(
+        map,
+        bounds,
+        padding,
+        fitBoundsMaxZoom,
+        syncMapViewFromMap,
+      );
       didFitForCurrentVertexSetRef.current = true;
     }
   }, [
@@ -402,6 +416,7 @@ function GoogleTerrainMap({
     vertices,
     initialCenter,
     initialZoom,
+    fitBoundsMaxZoom,
     syncMapViewFromMap,
   ]);
 

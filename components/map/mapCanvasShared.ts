@@ -8,9 +8,16 @@ import type {
 import * as turf from "@turf/turf";
 import type { CSSProperties } from "react";
 import type { LocalPOI, LocalPolygon, LocalVertex } from "@/lib/db/schema";
+import { MAP_FIT_BOUNDS_MAX_ZOOM_DEFAULT } from "@/lib/settings/mapFitBoundsMaxZoom";
 
 export const DEFAULT_CENTER: [number, number] = [-96.13, 15.87];
 export const DEFAULT_ZOOM = 14;
+
+/**
+ * Valor por defecto / respaldo del tope de zoom tras `fitBounds` (véase Ajustes).
+ * @see MAP_FIT_BOUNDS_MAX_ZOOM_DEFAULT
+ */
+export const MAP_FIT_BOUNDS_MAX_ZOOM = MAP_FIT_BOUNDS_MAX_ZOOM_DEFAULT;
 
 export const containerStyle: CSSProperties = {
   width: "100%",
@@ -48,6 +55,11 @@ export interface MapCanvasProps {
    * Si `allowVertexDrag` está activo, se muestran puntos mínimos sin texto para arrastrar.
    */
   outlineOnly?: boolean;
+  /**
+   * Tope de zoom al encuadrar geometría (`fitBounds`). Lo rellena `MapCanvasInner`
+   * desde Ajustes; si no viene, se usa `MAP_FIT_BOUNDS_MAX_ZOOM`.
+   */
+  fitBoundsMaxZoom?: number;
   /** PNG para el PDF (motor WebGL: canvas; Google: captura del contenedor). */
   onCaptureReady?: (dataUrl: string) => void;
 }

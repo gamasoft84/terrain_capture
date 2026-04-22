@@ -37,6 +37,7 @@ import {
   containerStyle,
   DEFAULT_CENTER,
   DEFAULT_ZOOM,
+  MAP_FIT_BOUNDS_MAX_ZOOM,
   pickSubPolygonAtPoint,
   sortedVertices,
   type MapCanvasProps,
@@ -98,6 +99,7 @@ function MapboxTerrainMap({
   resolveVertexDragTarget,
   minimalChrome = false,
   outlineOnly = false,
+  fitBoundsMaxZoom = MAP_FIT_BOUNDS_MAX_ZOOM,
   onCaptureReady,
   mapboxAccessToken: mapboxToken,
 }: InnerProps) {
@@ -277,7 +279,11 @@ function MapboxTerrainMap({
     const duration = minimalChrome ? 0 : 500;
 
     if (!allowVertexDrag) {
-      map.fitBounds(bounds, { padding: pad, maxZoom: 18, duration });
+      map.fitBounds(bounds, {
+        padding: pad,
+        maxZoom: fitBoundsMaxZoom,
+        duration,
+      });
       return;
     }
 
@@ -290,7 +296,11 @@ function MapboxTerrainMap({
       didFitForCurrentVertexSetRef.current = false;
     }
     if (!didFitForCurrentVertexSetRef.current) {
-      map.fitBounds(bounds, { padding: pad, maxZoom: 18, duration });
+      map.fitBounds(bounds, {
+        padding: pad,
+        maxZoom: fitBoundsMaxZoom,
+        duration,
+      });
       didFitForCurrentVertexSetRef.current = true;
     }
   }, [
@@ -305,6 +315,7 @@ function MapboxTerrainMap({
     initialCenter,
     initialZoom,
     minimalChrome,
+    fitBoundsMaxZoom,
   ]);
 
   useEffect(() => {
