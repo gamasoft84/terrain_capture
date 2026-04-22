@@ -44,8 +44,10 @@ export function SyncSettingsActions() {
       ) : null}
 
       <p className="text-muted-foreground text-sm leading-snug">
-        Solo envía cambios de <strong>este dispositivo</strong> a Supabase (subida).
-        No descarga proyectos creados en otros teléfonos o navegadores.
+        Con red, cada ciclo <strong>descarga</strong> desde Supabase lo que haya en la nube
+        (mismo proyecto y anon key) y luego <strong>sube</strong> la cola local. Si el
+        servidor tiene una versión más reciente (<span className="font-mono text-xs">updated_at</span>
+        ), sustituye el proyecto o el polígono afectado en este dispositivo.
       </p>
 
       <ul className="text-muted-foreground space-y-1 text-sm">

@@ -5,8 +5,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSharedOnlineStatus } from "@/lib/context/OnlineStatusBridge";
 import { getDb } from "@/lib/db/schema";
 import { syncManager } from "@/lib/db/sync";
+import { pullRemoteFromSupabase } from "@/lib/db/sync/pullRemote";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const RETRY_INTERVAL_MS = 30_000;
+
+function supabasePublicEnvReady(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return (
+    typeof url === "string" &&
+    url.length > 0 &&
+    typeof key === "string" &&
+    key.length > 0
+  );
+}
 
 export type UseSyncQueueResult = {
   /** Hay trabajo en cola (`pending` o `processing`). */
@@ -66,6 +79,14 @@ export function useSyncQueue(): UseSyncQueueResult {
     if (!online || lockRef.current) return;
     lockRef.current = true;
     try {
+      if (supabasePublicEnvReady()) {
+        try {
+          const client = createBrowserSupabaseClient();
+          await pullRemoteFromSupabase(client);
+        } catch (e) {
+          console.error("[sync] pull desde Supabase:", e);
+        }
+      }
       // Manual: fuerza reintento aunque haya backoff tras fallos previos.
       await syncManager.processQueue({ force: true });
       setLastSync(new Date());
