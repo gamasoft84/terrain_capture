@@ -25,7 +25,10 @@ export function SyncSettingsActions() {
     failedCount,
     isSyncing,
     lastSync,
+    lastPull,
+    lastPullError,
     syncNow,
+    pullNow,
     online,
   } = useSyncQueueContext();
 
@@ -75,9 +78,28 @@ export function SyncSettingsActions() {
         ) : (
           <li className="text-xs">Aún no se ha completado un ciclo en esta sesión.</li>
         )}
+        {lastPull ? (
+          <li className="text-xs">
+            Última descarga (pull):{" "}
+            {formatDistanceToNow(lastPull, { addSuffix: true, locale: es })}
+          </li>
+        ) : null}
+        {lastPullError ? (
+          <li className="text-destructive text-xs leading-snug">
+            Error en descarga (pull): {lastPullError}
+          </li>
+        ) : null}
       </ul>
 
       <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!envOk || !online || isSyncing}
+          onClick={() => void pullNow()}
+        >
+          Descargar todo de Supabase
+        </Button>
         <Button
           type="button"
           disabled={!envOk || !online || isSyncing}

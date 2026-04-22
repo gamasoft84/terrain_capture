@@ -119,6 +119,9 @@ export function SyncIndicator() {
     isSyncing,
     lastSync,
     syncNow,
+    lastPull,
+    lastPullError,
+    pullNow,
     online,
   } = useSyncQueueContext();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -201,6 +204,17 @@ export function SyncIndicator() {
                   })}
                 </span>
               ) : null}
+              {lastPull ? (
+                <span className="mt-1 block text-xs">
+                  Última descarga (pull):{" "}
+                  {formatDistanceToNow(lastPull, { addSuffix: true, locale: es })}
+                </span>
+              ) : null}
+              {lastPullError ? (
+                <span className="text-destructive mt-1 block text-xs leading-snug">
+                  Error en descarga (pull): {lastPullError}
+                </span>
+              ) : null}
             </SheetDescription>
           </SheetHeader>
           <div className="px-4 py-3">
@@ -208,6 +222,15 @@ export function SyncIndicator() {
           </div>
           <SheetFooter className="border-border flex-col gap-2 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 sm:flex-none"
+                disabled={!online || isSyncing}
+                onClick={() => void pullNow()}
+              >
+                Descargar (pull)
+              </Button>
               <Button
                 type="button"
                 className="flex-1 sm:flex-none"

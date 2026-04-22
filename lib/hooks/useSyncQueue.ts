@@ -30,8 +30,14 @@ export type UseSyncQueueResult = {
   isSyncing: boolean;
   /** Última ejecución completa de `processQueue` (éxito al volver del await). */
   lastSync: Date | null;
+  /** Última descarga completa desde Supabase (pull). */
+  lastPull: Date | null;
+  /** Último error del pull (si hubo). */
+  lastPullError: string | null;
   /** Fuerza un ciclo de sincronización si hay red. */
   syncNow: () => Promise<void>;
+  /** Descarga desde Supabase sin subir la cola. */
+  pullNow: () => Promise<void>;
   /** Resultado combinado de `useOnlineStatus`. */
   online: boolean;
 };
@@ -65,6 +71,8 @@ export function useSyncQueue(): UseSyncQueueResult {
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [lastPull, setLastPull] = useState<Date | null>(null);
+  const [lastPullError, setLastPullError] = useState<string | null>(null);
   const lockRef = useRef(false);
   const wasOnlineRef = useRef<boolean | null>(null);
 
@@ -75,16 +83,38 @@ export function useSyncQueue(): UseSyncQueueResult {
     return unsub;
   }, []);
 
+  const pullNow = useCallback(async () => {
+    if (!online || lockRef.current) return;
+    if (!supabasePublicEnvReady()) return;
+    lockRef.current = true;
+    try {
+      setLastPullError(null);
+      const client = createBrowserSupabaseClient();
+      await pullRemoteFromSupabase(client);
+      setLastPull(new Date());
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[sync] pull desde Supabase:", e);
+      setLastPullError(msg);
+    } finally {
+      lockRef.current = false;
+    }
+  }, [online]);
+
   const syncNow = useCallback(async () => {
     if (!online || lockRef.current) return;
     lockRef.current = true;
     try {
       if (supabasePublicEnvReady()) {
         try {
+          setLastPullError(null);
           const client = createBrowserSupabaseClient();
           await pullRemoteFromSupabase(client);
+          setLastPull(new Date());
         } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
           console.error("[sync] pull desde Supabase:", e);
+          setLastPullError(msg);
         }
       }
       // Manual: fuerza reintento aunque haya backoff tras fallos previos.
@@ -93,7 +123,7 @@ export function useSyncQueue(): UseSyncQueueResult {
     } finally {
       lockRef.current = false;
     }
-  }, [online]);
+  }, [online, pullNow]);
 
   useEffect(() => {
     if (!online) {
@@ -129,7 +159,10 @@ export function useSyncQueue(): UseSyncQueueResult {
     failedCount,
     isSyncing,
     lastSync,
+    lastPull,
+    lastPullError,
     syncNow,
+    pullNow,
     online,
   };
 }
