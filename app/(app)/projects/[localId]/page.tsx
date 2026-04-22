@@ -434,7 +434,7 @@ export default function ProjectDetailPage() {
         onDeleted={() => router.push("/")}
       />
       <FieldPermissionsIntro />
-      <div className="fixed inset-x-0 top-14 bottom-16 z-[33] flex flex-col">
+      <div className="fixed inset-x-0 top-14 bottom-16 z-10 flex flex-col">
         <MapCanvas
           className="min-h-0 w-full flex-1 basis-0"
           vertices={data.vertices}
@@ -459,66 +459,6 @@ export default function ProjectDetailPage() {
           resolveVertexDragTarget={resolveVertexDragTarget}
           outlineOnly={mapOutlineOnly}
         />
-        <div className="border-border bg-card/90 pointer-events-auto flex flex-wrap items-center justify-between gap-2 border-t px-2 py-2 shadow-[0_-10px_30px_rgba(0,0,0,0.25)] backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            {p1Vertex ? (
-              <a
-                href={directionsUrlTo(p1Vertex.latitude, p1Vertex.longitude)}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Abrir ruta desde tu ubicación al vértice P1 del terreno principal"
-                className={cn(
-                  buttonVariants({ variant: "secondary", size: "sm" }),
-                  "inline-flex items-center gap-2",
-                )}
-              >
-                <Navigation className="size-4 shrink-0" aria-hidden />
-                <span className="max-w-[11rem] truncate sm:max-w-none">
-                  Cómo llegar
-                </span>
-              </a>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Link
-              href={`/projects/${data.project.localId}/report`}
-              className={cn(
-                buttonVariants({ variant: "secondary", size: "sm" }),
-                "shadow-sm",
-              )}
-            >
-              Reporte
-            </Link>
-            <Link
-              href={`/projects/${data.project.localId}/gallery`}
-              className={cn(
-                buttonVariants({ variant: "secondary", size: "sm" }),
-                "shadow-sm",
-              )}
-            >
-              Galería
-            </Link>
-            <Link
-              href={`/projects/${data.project.localId}/pois`}
-              className={cn(
-                buttonVariants({ variant: "secondary", size: "sm" }),
-                "shadow-sm",
-              )}
-            >
-              POIs
-            </Link>
-            <Link
-              href="/"
-              className={cn(
-                buttonVariants({ variant: "secondary", size: "sm" }),
-                "shadow-sm",
-              )}
-            >
-              Lista
-            </Link>
-          </div>
-        </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
             <h1 className="text-foreground truncate text-base font-semibold tracking-tight">
@@ -557,6 +497,72 @@ export default function ProjectDetailPage() {
             >
               <Trash2 className="size-4" />
             </Button>
+          </div>
+        </div>
+
+        {/* Accesos rápidos sobre el mapa (evita tapar contorno) */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-2 p-3">
+          <div className="flex items-center gap-2">
+            {p1Vertex ? (
+              <a
+                href={directionsUrlTo(p1Vertex.latitude, p1Vertex.longitude)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir ruta desde tu ubicación al vértice P1 del terreno principal"
+                className={cn(
+                  buttonVariants({ variant: "secondary", size: "sm" }),
+                  "pointer-events-auto inline-flex items-center gap-2 shadow-md backdrop-blur-sm",
+                )}
+                style={{ marginBottom: "5.5rem" }}
+              >
+                <Navigation className="size-4 shrink-0" aria-hidden />
+                <span className="max-w-[10rem] truncate sm:max-w-none">
+                  Cómo llegar
+                </span>
+              </a>
+            ) : null}
+          </div>
+
+          <div
+            className="pointer-events-auto flex flex-wrap items-center justify-end gap-2"
+            style={{ marginBottom: "5.5rem" }}
+          >
+            <Link
+              href={`/projects/${data.project.localId}/report`}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md backdrop-blur-sm",
+              )}
+            >
+              Reporte
+            </Link>
+            <Link
+              href={`/projects/${data.project.localId}/gallery`}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md backdrop-blur-sm",
+              )}
+            >
+              Galería
+            </Link>
+            <Link
+              href={`/projects/${data.project.localId}/pois`}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md backdrop-blur-sm",
+              )}
+            >
+              POIs
+            </Link>
+            <Link
+              href="/"
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "shadow-md backdrop-blur-sm",
+              )}
+            >
+              Lista
+            </Link>
           </div>
         </div>
       </div>
