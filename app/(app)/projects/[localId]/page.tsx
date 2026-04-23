@@ -548,7 +548,7 @@ export default function ProjectDetailPage() {
                   buttonVariants({ variant: "secondary", size: "sm" }),
                   "pointer-events-auto inline-flex items-center gap-2 shadow-md backdrop-blur-sm",
                 )}
-                style={{ marginBottom: "5.5rem" }}
+                style={{ marginBottom: "calc(5.5rem - 0.5cm)" }}
               >
                 <Navigation className="size-4 shrink-0" aria-hidden />
                 <span className="max-w-[10rem] truncate sm:max-w-none">
@@ -560,7 +560,7 @@ export default function ProjectDetailPage() {
 
           <div
             className="pointer-events-auto flex flex-wrap items-center justify-end gap-2"
-            style={{ marginBottom: "5.5rem" }}
+            style={{ marginBottom: "calc(5.5rem - 0.5cm)" }}
           >
             <Link
               href={`/projects/${data.project.localId}/report`}

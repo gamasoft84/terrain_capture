@@ -131,9 +131,14 @@
   }
 }
 
-/* Mapbox GL: separar controles de zoom/geolocate de la barra flotante del proyecto */
-.terrain-map-canvas-root .mapboxgl-ctrl-top-right {
-  top: max(5.25rem, calc(env(safe-area-inset-top, 0px) + 4rem)) !important;
+/*
+ * Mapbox / MapLibre: zoom (+/−) y geolocalización comparten la esquina superior derecha.
+ * La barra del proyecto (solo contorno, exportar, etc.) flota arriba; bajamos el bloque
+ * de controles para que no se traslapen (incl. maplibregl, que no usa prefijo mapboxgl).
+ */
+.terrain-map-canvas-root .mapboxgl-ctrl-top-right,
+.terrain-map-canvas-root .maplibregl-ctrl-top-right {
+  top: max(8.75rem, calc(env(safe-area-inset-top, 0px) + 7.25rem)) !important;
 }
 
 /* Google Maps + Tailwind preflight: evita que estilos globales rompan tiles/markers. */
