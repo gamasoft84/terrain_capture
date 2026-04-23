@@ -6,6 +6,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Loader2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -50,6 +51,13 @@ function GalleryThumb({
   }, [blobUrl]);
 
   const src = item.photoUrl ?? blobUrl;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgErrored, setImgErrored] = useState(false);
+
+  useEffect(() => {
+    setImgLoaded(false);
+    setImgErrored(false);
+  }, [src]);
 
   return (
     <button
@@ -57,15 +65,44 @@ function GalleryThumb({
       className="border-border hover:border-primary/50 w-full overflow-hidden rounded-lg border bg-card text-left shadow-sm transition-colors"
       onClick={onOpen}
     >
-      <div className="bg-muted/40 aspect-square w-full">
+      <div className="bg-muted/40 relative aspect-square w-full">
         {src ? (
           /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={src} alt="" className="size-full object-cover" />
+          <img
+            src={src}
+            alt=""
+            className={cn(
+              "size-full object-cover transition-opacity",
+              !imgLoaded && !imgErrored && "opacity-0",
+              (imgLoaded || imgErrored) && "opacity-100",
+            )}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgErrored(true)}
+          />
         ) : (
           <div className="text-muted-foreground flex size-full items-center justify-center text-xs">
             —
           </div>
         )}
+
+        {src && !imgLoaded && !imgErrored ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="bg-background/70 text-foreground flex items-center gap-2 rounded-md border px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              Cargando…
+            </div>
+          </div>
+        ) : null}
+
+        {src && imgErrored ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="bg-background/70 text-foreground rounded-md border px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
+              No se pudo cargar
+            </div>
+          </div>
+        ) : null}
       </div>
       <div className="space-y-1 p-2">
         <p className="text-muted-foreground line-clamp-2 text-[10px] leading-tight">
