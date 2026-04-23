@@ -85,6 +85,13 @@ function toDate(value: string | null | undefined): Date {
   return new Date(value);
 }
 
+/** Filas Dexie legadas sin `updatedAt` o fecha inválida (evita crash en pull LWW). */
+function dexieUpdatedAtMs(row: { updatedAt?: Date }): number {
+  const d = row.updatedAt;
+  if (d instanceof Date && !Number.isNaN(d.getTime())) return d.getTime();
+  return 0;
+}
+
 function toNum(value: number | string | null | undefined): number | undefined {
   if (value == null || value === "") return undefined;
   const n = typeof value === "number" ? value : Number(value);
@@ -356,14 +363,18 @@ async function mergeNewPoisAndPhotos(
     for (const row of (poiRows ?? []) as RemotePoi[]) {
       const existing = await db.pois.get(row.local_id);
       if (!existing) await db.pois.put(mapRemotePoi(row, projectLocalId));
-      else if (toDate(row.updated_at).getTime() > existing.updatedAt.getTime()) {
+      else if (
+        toDate(row.updated_at).getTime() > dexieUpdatedAtMs(existing)
+      ) {
         await db.pois.put(mapRemotePoi(row, projectLocalId));
       }
     }
     for (const row of (photoRows ?? []) as RemoteProjectPhoto[]) {
       const existing = await db.projectPhotos.get(row.local_id);
       if (!existing) await db.projectPhotos.put(mapRemoteProjectPhoto(row, projectLocalId));
-      else if (toDate(row.updated_at).getTime() > existing.updatedAt.getTime()) {
+      else if (
+        toDate(row.updated_at).getTime() > dexieUpdatedAtMs(existing)
+      ) {
         await db.projectPhotos.put(mapRemoteProjectPhoto(row, projectLocalId));
       }
     }
@@ -443,7 +454,7 @@ export async function pullRemoteFromSupabase(
       continue;
     }
 
-    const localProjectTime = local.updatedAt.getTime();
+    const localProjectTime = dexieUpdatedAtMs(local);
     const projectRemoteNewer = remoteProjectTime > localProjectTime;
 
     const { data: polyRows, error: polyErr } = await client
@@ -463,7 +474,7 @@ export async function pullRemoteFromSupabase(
         stalePolygons.push(rpoly);
         continue;
       }
-      if (rTime > lp.updatedAt.getTime()) {
+      if (rTime > dexieUpdatedAtMs(lp)) {
         stalePolygons.push(rpoly);
       }
     }

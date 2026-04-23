@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Navigation, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -35,7 +34,6 @@ import { directionsUrlTo } from "@/lib/geo/directionsUrls";
 import { analyzeClosedPolygonIssues } from "@/lib/geo/polygonTopology";
 import { ProjectMapExportMenu } from "@/components/project/ProjectMapExportMenu";
 import { DeleteProjectDialog } from "@/components/project/DeleteProjectDialog";
-import { projectStatusLabelEs } from "@/lib/db/projectStatusLabels";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import {
   listSubPolygonsByProject,
@@ -483,15 +481,10 @@ export default function ProjectDetailPage() {
           outlineOnly={effectiveOutlineOnly}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
-          <div className="bg-card/90 pointer-events-auto max-w-[min(100%,20rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
-            <div className="flex items-start justify-between gap-2">
-              <h1 className="text-foreground min-w-0 flex-1 truncate text-base font-semibold tracking-tight">
-                {data.project.name}
-              </h1>
-              <Badge variant="secondary" className="shrink-0 text-[10px] font-medium">
-                {projectStatusLabelEs(data.project.status)}
-              </Badge>
-            </div>
+          <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
+            <h1 className="text-foreground truncate text-base font-semibold tracking-tight">
+              {data.project.name}
+            </h1>
             {data.project.locationLabel ? (
               <p className="text-muted-foreground mt-0.5 truncate text-xs">
                 {data.project.locationLabel}
