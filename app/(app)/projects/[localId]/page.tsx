@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Navigation, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -34,11 +35,13 @@ import { directionsUrlTo } from "@/lib/geo/directionsUrls";
 import { analyzeClosedPolygonIssues } from "@/lib/geo/polygonTopology";
 import { ProjectMapExportMenu } from "@/components/project/ProjectMapExportMenu";
 import { DeleteProjectDialog } from "@/components/project/DeleteProjectDialog";
+import { projectStatusLabelEs } from "@/lib/db/projectStatusLabels";
 import { refreshPolygonMetricsFromVertices } from "@/lib/db/refreshPolygonMetrics";
 import {
   listSubPolygonsByProject,
   updatePolygon,
 } from "@/lib/db/polygons";
+import { updateProject } from "@/lib/db/projects";
 import {
   deleteVertex,
   listVerticesByPolygon,
@@ -105,6 +108,7 @@ export default function ProjectDetailPage() {
   const [subAreasWorkflowEnabled, setSubAreasWorkflowEnabled] =
     useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [markCompleteBusy, setMarkCompleteBusy] = useState(false);
   const data = useLiveQuery(
     async (): Promise<ProjectDetailData | undefined> => {
       try {
@@ -234,6 +238,22 @@ export default function ProjectDetailPage() {
     if (!verts?.length) return null;
     return sortedVertices(verts)[0] ?? null;
   }, [data?.vertices]);
+
+  const handleMarkProjectComplete = useCallback(async () => {
+    if (!data?.project || !data.main?.isClosed) return;
+    if (
+      data.project.status === "completed" ||
+      data.project.status === "shared"
+    ) {
+      return;
+    }
+    setMarkCompleteBusy(true);
+    try {
+      await updateProject(data.project.localId, { status: "completed" });
+    } finally {
+      setMarkCompleteBusy(false);
+    }
+  }, [data?.project, data?.main?.isClosed]);
 
   const handleClosePolygon = useCallback(async () => {
     if (!data?.main || data.vertices.length < 3) return;
@@ -463,14 +483,33 @@ export default function ProjectDetailPage() {
           outlineOnly={effectiveOutlineOnly}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
-          <div className="bg-card/90 pointer-events-auto max-w-[min(100%,18rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
-            <h1 className="text-foreground truncate text-base font-semibold tracking-tight">
-              {data.project.name}
-            </h1>
+          <div className="bg-card/90 pointer-events-auto max-w-[min(100%,20rem)] rounded-lg border px-3 py-2 shadow-md backdrop-blur-sm">
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="text-foreground min-w-0 flex-1 truncate text-base font-semibold tracking-tight">
+                {data.project.name}
+              </h1>
+              <Badge variant="secondary" className="shrink-0 text-[10px] font-medium">
+                {projectStatusLabelEs(data.project.status)}
+              </Badge>
+            </div>
             {data.project.locationLabel ? (
-              <p className="text-muted-foreground truncate text-xs">
+              <p className="text-muted-foreground mt-0.5 truncate text-xs">
                 {data.project.locationLabel}
               </p>
+            ) : null}
+            {data.main.isClosed &&
+            data.project.status !== "completed" &&
+            data.project.status !== "shared" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 h-8 w-full text-xs font-medium"
+                disabled={markCompleteBusy}
+                onClick={() => void handleMarkProjectComplete()}
+              >
+                {markCompleteBusy ? "Guardando…" : "Marcar como completado"}
+              </Button>
             ) : null}
           </div>
           <div className="pointer-events-auto flex shrink-0 flex-wrap items-center justify-end gap-2">

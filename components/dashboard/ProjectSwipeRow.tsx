@@ -15,6 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DeleteProjectDialog } from "@/components/project/DeleteProjectDialog";
+import { projectStatusLabelEs } from "@/lib/db/projectStatusLabels";
+import type { LocalProject } from "@/lib/db/schema";
 
 const DELETE_PANEL_PX = 88;
 
@@ -23,7 +25,7 @@ export type ProjectSwipeRowData = {
   projectLocalId: string;
   locationLabel?: string;
   updatedAt: Date;
-  status: string;
+  status: LocalProject["status"];
   areaLabel: string | null;
 };
 
@@ -150,8 +152,8 @@ export function ProjectSwipeRow({ row }: ProjectSwipeRowProps) {
                 <CardHeader className="pb-2 pr-12">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-lg">{row.projectName}</CardTitle>
-                    <Badge variant="secondary" className="shrink-0 capitalize">
-                      {row.status.replace("_", " ")}
+                    <Badge variant="secondary" className="shrink-0">
+                      {projectStatusLabelEs(row.status)}
                     </Badge>
                   </div>
                   {row.locationLabel ? (

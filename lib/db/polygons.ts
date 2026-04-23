@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { getDb } from "@/lib/db/schema";
 import type { LocalPolygon } from "@/lib/db/schema";
+import { updateProject } from "@/lib/db/projects";
 import { syncManager } from "@/lib/db/sync";
 
 export async function getMainPolygon(
@@ -62,12 +63,25 @@ export async function updatePolygon(
   >,
 ): Promise<void> {
   const db = getDb();
+  const before = await db.polygons.get(localId);
   await db.polygons.update(localId, {
     ...patch,
     updatedAt: new Date(),
     syncStatus: "pending",
   });
   void syncManager.enqueueUpdate("polygon", localId, {});
+
+  if (
+    patch.isClosed === true &&
+    before &&
+    before.type === "main" &&
+    !before.isClosed
+  ) {
+    const proj = await db.projects.get(before.projectLocalId);
+    if (proj?.status === "draft") {
+      await updateProject(before.projectLocalId, { status: "in_progress" });
+    }
+  }
 }
 
 /** Borra el polígono y todos sus vértices (Dexie). No aplicar al polígono principal. */
